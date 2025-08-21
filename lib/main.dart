@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'presentations/stock_chart_demo.dart';
+import 'presentations/trading_screen/stock_chart_demo.dart';
 
 void main() {
   runApp(const MyApp());

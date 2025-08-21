@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../modules/chart/chart.dart';
-import '../model/candle_model.dart';
+import '../../modules/chart/chart.dart';
+import '../../model/candle_model.dart';
 
 /// Demo page showing how to use the StockChart widget
 class StockChartDemo extends StatefulWidget {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/services.dart';
 import '../../model/candle_model.dart';
 
 /// A comprehensive stock chart widget that displays candlestick data with advanced features
@@ -52,15 +53,65 @@ class StockChart extends StatefulWidget {
 }
 
 class _StockChartState extends State<StockChart> {
-  final TransformationController _transformationController =
-      TransformationController();
   CandleStick? _hoveredCandle;
   Offset? _hoverPosition;
 
+  // Scaling factors for candles
+  double _timeScale = 1.0; // X-axis scaling (candle width and spacing)
+  double _priceScale =
+      1.0; // Y-axis scaling (price range compression/expansion)
+
+  static const double _minTimeScale = 0.3;
+  static const double _maxTimeScale = 3.0;
+  static const double _minPriceScale = 0.5;
+  static const double _maxPriceScale = 2.0;
+  static const double _scaleStep = 0.1;
+
+  @override
+  void initState() {
+    super.initState();
+  }
+
   @override
   void dispose() {
-    _transformationController.dispose();
     super.dispose();
+  }
+
+  // Time axis scaling (candle width/spacing)
+  void _zoomInTime() {
+    setState(() {
+      _timeScale =
+          (_timeScale + _scaleStep).clamp(_minTimeScale, _maxTimeScale);
+    });
+  }
+
+  void _zoomOutTime() {
+    setState(() {
+      _timeScale =
+          (_timeScale - _scaleStep).clamp(_minTimeScale, _maxTimeScale);
+    });
+  }
+
+  // Price axis scaling (price range)
+  void _zoomInPrice() {
+    setState(() {
+      _priceScale =
+          (_priceScale + _scaleStep).clamp(_minPriceScale, _maxPriceScale);
+    });
+  }
+
+  void _zoomOutPrice() {
+    setState(() {
+      _priceScale =
+          (_priceScale - _scaleStep).clamp(_minPriceScale, _maxPriceScale);
+    });
+  }
+
+  void _resetScaling() {
+    setState(() {
+      _timeScale = 1.0;
+      _priceScale = 1.0;
+    });
   }
 
   @override
@@ -78,68 +129,226 @@ class _StockChartState extends State<StockChart> {
       );
     }
 
+    // Calculate scaled candle dimensions
+    final scaledCandleWidth = widget.candleWidth * _timeScale;
+    final scaledCandleSpacing = widget.candleSpacing * _timeScale;
     final chartWidth =
-        widget.candles.length * (widget.candleWidth + widget.candleSpacing);
+        widget.candles.length * (scaledCandleWidth + scaledCandleSpacing);
 
     return Container(
       height: widget.height,
       color: widget.backgroundColor,
-      child: widget.enableInteraction
-          ? InteractiveViewer(
-              transformationController: _transformationController,
-              boundaryMargin: const EdgeInsets.all(20),
-              minScale: 0.5,
-              maxScale: 5.0,
-              child: _buildChart(chartWidth),
-            )
-          : SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: _buildChart(chartWidth),
+      child: Stack(
+        children: [
+          // Main chart with horizontal scrolling if content overflows
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child:
+                _buildChart(chartWidth, scaledCandleWidth, scaledCandleSpacing),
+          ),
+
+          // Scale controls (only show if interaction is enabled)
+          if (widget.enableInteraction)
+            Positioned(
+              top: 10,
+              right: 10,
+              child: _buildScaleControls(),
             ),
+        ],
+      ),
     );
   }
 
-  Widget _buildChart(double chartWidth) {
-    return MouseRegion(
-      onHover: widget.enableInteraction ? _onHover : null,
-      onExit: widget.enableInteraction ? _onHoverExit : null,
-      child: GestureDetector(
-        onTapDown: widget.enableInteraction ? _onTapDown : null,
-        child: CustomPaint(
-          size: Size(chartWidth, widget.height),
-          painter: StockChartPainter(
-            candles: widget.candles,
-            candleWidth: widget.candleWidth,
-            candleSpacing: widget.candleSpacing,
-            bullishColor: widget.bullishColor,
-            bearishColor: widget.bearishColor,
-            dojiColor: widget.dojiColor,
-            wickColor: widget.wickColor,
-            gridColor: widget.gridColor,
-            textColor: widget.textColor,
-            showGrid: widget.showGrid,
-            showVolume: widget.showVolume,
-            showPriceLabels: widget.showPriceLabels,
-            showTimeLabels: widget.showTimeLabels,
-            volumeHeightRatio: widget.volumeHeightRatio,
-            labelTextStyle: widget.labelTextStyle ??
-                TextStyle(color: widget.textColor, fontSize: 10),
-            hoveredCandle: _hoveredCandle,
-            hoverPosition: _hoverPosition,
+  Widget _buildScaleControls() {
+    return Card(
+      elevation: 4,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Time Scale Controls
+          Container(
+            padding: const EdgeInsets.all(4),
+            child: const Text('Time',
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+          ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                onPressed: _timeScale > _minTimeScale ? _zoomOutTime : null,
+                icon: const Icon(Icons.remove),
+                tooltip: 'Compress Time',
+                iconSize: 16,
+              ),
+              Text(
+                '${(_timeScale * 100).round()}%',
+                style: const TextStyle(fontSize: 9),
+              ),
+              IconButton(
+                onPressed: _timeScale < _maxTimeScale ? _zoomInTime : null,
+                icon: const Icon(Icons.add),
+                tooltip: 'Expand Time',
+                iconSize: 16,
+              ),
+            ],
+          ),
+
+          const Divider(height: 1),
+
+          // Price Scale Controls
+          Container(
+            padding: const EdgeInsets.all(4),
+            child: const Text('Price',
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+          ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                onPressed: _priceScale > _minPriceScale ? _zoomOutPrice : null,
+                icon: const Icon(Icons.remove),
+                tooltip: 'Compress Price',
+                iconSize: 16,
+              ),
+              Text(
+                '${(_priceScale * 100).round()}%',
+                style: const TextStyle(fontSize: 9),
+              ),
+              IconButton(
+                onPressed: _priceScale < _maxPriceScale ? _zoomInPrice : null,
+                icon: const Icon(Icons.add),
+                tooltip: 'Expand Price',
+                iconSize: 16,
+              ),
+            ],
+          ),
+
+          const Divider(height: 1),
+
+          // Reset button
+          IconButton(
+            onPressed: (_timeScale != 1.0 || _priceScale != 1.0)
+                ? _resetScaling
+                : null,
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Reset Scaling',
+            iconSize: 16,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChart(
+      double chartWidth, double scaledCandleWidth, double scaledCandleSpacing) {
+    return Listener(
+      onPointerSignal: widget.enableInteraction ? _onPointerSignal : null,
+      child: MouseRegion(
+        onHover: widget.enableInteraction
+            ? (event) => _onHover(event, scaledCandleWidth, scaledCandleSpacing)
+            : null,
+        onExit: widget.enableInteraction ? _onHoverExit : null,
+        child: GestureDetector(
+          onTapDown: widget.enableInteraction
+              ? (details) =>
+                  _onTapDown(details, scaledCandleWidth, scaledCandleSpacing)
+              : null,
+          onDoubleTap: widget.enableInteraction ? _onDoubleTap : null,
+          child: RawKeyboardListener(
+            focusNode: FocusNode(),
+            onKey: widget.enableInteraction ? _onKeyEvent : null,
+            child: CustomPaint(
+              size: Size(chartWidth, widget.height),
+              painter: StockChartPainter(
+                candles: widget.candles,
+                candleWidth: scaledCandleWidth,
+                candleSpacing: scaledCandleSpacing,
+                priceScale: _priceScale,
+                bullishColor: widget.bullishColor,
+                bearishColor: widget.bearishColor,
+                dojiColor: widget.dojiColor,
+                wickColor: widget.wickColor,
+                gridColor: widget.gridColor,
+                textColor: widget.textColor,
+                showGrid: widget.showGrid,
+                showVolume: widget.showVolume,
+                showPriceLabels: widget.showPriceLabels,
+                showTimeLabels: widget.showTimeLabels,
+                volumeHeightRatio: widget.volumeHeightRatio,
+                labelTextStyle: widget.labelTextStyle ??
+                    TextStyle(color: widget.textColor, fontSize: 10),
+                hoveredCandle: _hoveredCandle,
+                hoverPosition: _hoverPosition,
+              ),
+            ),
           ),
         ),
       ),
     );
   }
 
-  void _onHover(PointerHoverEvent event) {
+  void _onPointerSignal(PointerSignalEvent event) {
+    if (event is PointerScrollEvent) {
+      final delta = event.scrollDelta.dy;
+      if (event.kind == PointerDeviceKind.mouse) {
+        // Use Ctrl key for price scaling, otherwise time scaling
+        if (RawKeyboard.instance.keysPressed
+                .contains(LogicalKeyboardKey.controlLeft) ||
+            RawKeyboard.instance.keysPressed
+                .contains(LogicalKeyboardKey.controlRight)) {
+          if (delta < 0) {
+            _zoomInPrice();
+          } else if (delta > 0) {
+            _zoomOutPrice();
+          }
+        } else {
+          if (delta < 0) {
+            _zoomInTime();
+          } else if (delta > 0) {
+            _zoomOutTime();
+          }
+        }
+      }
+    }
+  }
+
+  void _onDoubleTap() {
+    _resetScaling();
+  }
+
+  void _onKeyEvent(RawKeyEvent event) {
+    if (event is RawKeyDownEvent) {
+      // Time scaling with +/- keys
+      if (event.logicalKey.keyLabel == '+' ||
+          event.logicalKey.keyLabel == '=') {
+        _zoomInTime();
+      } else if (event.logicalKey.keyLabel == '-') {
+        _zoomOutTime();
+      }
+      // Price scaling with Shift + +/- keys
+      else if (event.isShiftPressed) {
+        if (event.logicalKey.keyLabel == '+' ||
+            event.logicalKey.keyLabel == '=') {
+          _zoomInPrice();
+        } else if (event.logicalKey.keyLabel == '-') {
+          _zoomOutPrice();
+        }
+      }
+      // Reset with 0 key
+      else if (event.logicalKey.keyLabel == '0') {
+        _resetScaling();
+      }
+    }
+  }
+
+  void _onHover(PointerHoverEvent event, double scaledCandleWidth,
+      double scaledCandleSpacing) {
     final RenderBox renderBox = context.findRenderObject() as RenderBox;
     final localPosition = renderBox.globalToLocal(event.position);
 
-    // Calculate which candle is being hovered
+    // Calculate which candle is being hovered using scaled dimensions
     final candleIndex =
-        (localPosition.dx / (widget.candleWidth + widget.candleSpacing))
-            .floor();
+        (localPosition.dx / (scaledCandleWidth + scaledCandleSpacing)).floor();
 
     if (candleIndex >= 0 && candleIndex < widget.candles.length) {
       setState(() {
@@ -156,9 +365,10 @@ class _StockChartState extends State<StockChart> {
     });
   }
 
-  void _onTapDown(TapDownDetails details) {
+  void _onTapDown(TapDownDetails details, double scaledCandleWidth,
+      double scaledCandleSpacing) {
     final candleIndex =
-        (details.localPosition.dx / (widget.candleWidth + widget.candleSpacing))
+        (details.localPosition.dx / (scaledCandleWidth + scaledCandleSpacing))
             .floor();
 
     if (candleIndex >= 0 && candleIndex < widget.candles.length) {
@@ -173,6 +383,7 @@ class StockChartPainter extends CustomPainter {
   final List<CandleStick> candles;
   final double candleWidth;
   final double candleSpacing;
+  final double priceScale;
   final Color bullishColor;
   final Color bearishColor;
   final Color dojiColor;
@@ -192,6 +403,7 @@ class StockChartPainter extends CustomPainter {
     required this.candles,
     required this.candleWidth,
     required this.candleSpacing,
+    required this.priceScale,
     required this.bullishColor,
     required this.bearishColor,
     required this.dojiColor,
@@ -263,15 +475,22 @@ class StockChartPainter extends CustomPainter {
     }
 
     // Add padding
-    final range = maxPrice - minPrice;
-    final padding = range * 0.05;
+    final baseRange = maxPrice - minPrice;
+    final padding = baseRange * 0.05;
     minPrice -= padding;
     maxPrice += padding;
 
+    // Apply price scaling - compress or expand the price range
+    final center = (minPrice + maxPrice) / 2;
+    final scaledRange = (maxPrice - minPrice) / priceScale;
+
+    final scaledMinPrice = center - (scaledRange / 2);
+    final scaledMaxPrice = center + (scaledRange / 2);
+
     return {
-      'min': minPrice,
-      'max': maxPrice,
-      'range': maxPrice - minPrice,
+      'min': scaledMinPrice,
+      'max': scaledMaxPrice,
+      'range': scaledMaxPrice - scaledMinPrice,
     };
   }
 
