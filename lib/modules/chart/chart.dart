@@ -129,22 +129,17 @@ class _StockChartState extends State<StockChart> {
       );
     }
 
-    // Calculate scaled candle dimensions
-    final scaledCandleWidth = widget.candleWidth * _timeScale;
-    final scaledCandleSpacing = widget.candleSpacing * _timeScale;
-    final chartWidth =
-        widget.candles.length * (scaledCandleWidth + scaledCandleSpacing);
-
     return Container(
       height: widget.height,
       color: widget.backgroundColor,
       child: Stack(
         children: [
-          // Main chart with horizontal scrolling if content overflows
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child:
-                _buildChart(chartWidth, scaledCandleWidth, scaledCandleSpacing),
+          // Main chart with fixed width
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final chartWidth = constraints.maxWidth;
+              return _buildChart(chartWidth);
+            },
           ),
 
           // Scale controls (only show if interaction is enabled)
@@ -239,19 +234,38 @@ class _StockChartState extends State<StockChart> {
     );
   }
 
-  Widget _buildChart(
-      double chartWidth, double scaledCandleWidth, double scaledCandleSpacing) {
+  Widget _buildChart(double chartWidth) {
+    // Calculate actual candle width based on time scale
+    final baseCandleWidth = widget.candleWidth * _timeScale;
+    final baseCandleSpacing = widget.candleSpacing * _timeScale;
+    final candleUnitWidth = baseCandleWidth + baseCandleSpacing;
+
+    // Calculate how many candles can fit in the chart width
+    final maxVisibleCandles = (chartWidth / candleUnitWidth).floor();
+    final totalCandles = widget.candles.length;
+    final visibleCandleCount = maxVisibleCandles.clamp(1, totalCandles);
+
+    // Calculate start index to center the visible candles
+    final startIndex = ((totalCandles - visibleCandleCount) / 2)
+        .floor()
+        .clamp(0, totalCandles - visibleCandleCount);
+    final endIndex = (startIndex + visibleCandleCount).clamp(0, totalCandles);
+
+    // Get the visible candles
+    final visibleCandles = widget.candles.sublist(startIndex, endIndex);
+
     return Listener(
       onPointerSignal: widget.enableInteraction ? _onPointerSignal : null,
       child: MouseRegion(
         onHover: widget.enableInteraction
-            ? (event) => _onHover(event, scaledCandleWidth, scaledCandleSpacing)
+            ? (event) =>
+                _onHover(event, baseCandleWidth, baseCandleSpacing, startIndex)
             : null,
         onExit: widget.enableInteraction ? _onHoverExit : null,
         child: GestureDetector(
           onTapDown: widget.enableInteraction
-              ? (details) =>
-                  _onTapDown(details, scaledCandleWidth, scaledCandleSpacing)
+              ? (details) => _onTapDown(
+                  details, baseCandleWidth, baseCandleSpacing, startIndex)
               : null,
           onDoubleTap: widget.enableInteraction ? _onDoubleTap : null,
           child: RawKeyboardListener(
@@ -260,10 +274,12 @@ class _StockChartState extends State<StockChart> {
             child: CustomPaint(
               size: Size(chartWidth, widget.height),
               painter: StockChartPainter(
-                candles: widget.candles,
-                candleWidth: scaledCandleWidth,
-                candleSpacing: scaledCandleSpacing,
+                candles: visibleCandles,
+                candleWidth: baseCandleWidth,
+                candleSpacing: baseCandleSpacing,
+                timeScale: _timeScale,
                 priceScale: _priceScale,
+                chartWidth: chartWidth,
                 bullishColor: widget.bullishColor,
                 bearishColor: widget.bearishColor,
                 dojiColor: widget.dojiColor,
@@ -341,18 +357,21 @@ class _StockChartState extends State<StockChart> {
     }
   }
 
-  void _onHover(PointerHoverEvent event, double scaledCandleWidth,
-      double scaledCandleSpacing) {
+  void _onHover(PointerHoverEvent event, double actualCandleWidth,
+      double actualCandleSpacing, int startIndex) {
     final RenderBox renderBox = context.findRenderObject() as RenderBox;
     final localPosition = renderBox.globalToLocal(event.position);
 
-    // Calculate which candle is being hovered using scaled dimensions
-    final candleIndex =
-        (localPosition.dx / (scaledCandleWidth + scaledCandleSpacing)).floor();
+    // Calculate which visible candle is being hovered based on actual candle widths
+    final candleUnitWidth = actualCandleWidth + actualCandleSpacing;
+    final visibleCandleIndex = (localPosition.dx / candleUnitWidth).floor();
 
-    if (candleIndex >= 0 && candleIndex < widget.candles.length) {
+    // Convert to actual candle index in the full dataset
+    final actualCandleIndex = startIndex + visibleCandleIndex;
+
+    if (actualCandleIndex >= 0 && actualCandleIndex < widget.candles.length) {
       setState(() {
-        _hoveredCandle = widget.candles[candleIndex];
+        _hoveredCandle = widget.candles[actualCandleIndex];
         _hoverPosition = localPosition;
       });
     }
@@ -365,14 +384,18 @@ class _StockChartState extends State<StockChart> {
     });
   }
 
-  void _onTapDown(TapDownDetails details, double scaledCandleWidth,
-      double scaledCandleSpacing) {
-    final candleIndex =
-        (details.localPosition.dx / (scaledCandleWidth + scaledCandleSpacing))
-            .floor();
+  void _onTapDown(TapDownDetails details, double actualCandleWidth,
+      double actualCandleSpacing, int startIndex) {
+    // Calculate which visible candle is being tapped based on actual candle widths
+    final candleUnitWidth = actualCandleWidth + actualCandleSpacing;
+    final visibleCandleIndex =
+        (details.localPosition.dx / candleUnitWidth).floor();
 
-    if (candleIndex >= 0 && candleIndex < widget.candles.length) {
-      final tappedCandle = widget.candles[candleIndex];
+    // Convert to actual candle index in the full dataset
+    final actualCandleIndex = startIndex + visibleCandleIndex;
+
+    if (actualCandleIndex >= 0 && actualCandleIndex < widget.candles.length) {
+      final tappedCandle = widget.candles[actualCandleIndex];
       widget.onCandleTap?.call(tappedCandle);
     }
   }
@@ -383,7 +406,9 @@ class StockChartPainter extends CustomPainter {
   final List<CandleStick> candles;
   final double candleWidth;
   final double candleSpacing;
+  final double timeScale;
   final double priceScale;
+  final double chartWidth;
   final Color bullishColor;
   final Color bearishColor;
   final Color dojiColor;
@@ -403,7 +428,9 @@ class StockChartPainter extends CustomPainter {
     required this.candles,
     required this.candleWidth,
     required this.candleSpacing,
+    required this.timeScale,
     required this.priceScale,
+    required this.chartWidth,
     required this.bullishColor,
     required this.bearishColor,
     required this.dojiColor,
@@ -588,9 +615,12 @@ class StockChartPainter extends CustomPainter {
   void _drawTimeLabels(Canvas canvas, Size size) {
     final textPainter = TextPainter(textDirection: TextDirection.ltr);
 
-    // Show time labels for every 10th candle
-    for (int i = 0; i < candles.length; i += 10) {
-      final x = i * (candleWidth + candleSpacing);
+    // Show time labels for visible candles based on their actual spacing
+    final labelStep = (candles.length / 5).ceil().clamp(1, candles.length);
+
+    for (int i = 0; i < candles.length; i += labelStep) {
+      // Position time labels based on actual candle positions
+      final x = i * (candleWidth + candleSpacing) + candleWidth / 2;
       final time = candles[i].time;
 
       textPainter.text = TextSpan(
@@ -621,8 +651,10 @@ class StockChartPainter extends CustomPainter {
 
   void _drawCandlesticks(
       Canvas canvas, Map<String, double> priceData, double chartHeight) {
+    // Position candles using their actual scaled widths
     for (int i = 0; i < candles.length; i++) {
       final candle = candles[i];
+      // Position candles based on actual width and spacing
       final x = i * (candleWidth + candleSpacing) + candleWidth / 2;
 
       _drawSingleCandle(
@@ -718,10 +750,13 @@ class StockChartPainter extends CustomPainter {
     double volumeChartHeight,
   ) {
     final paint = Paint();
+    final totalVisibleCandles = candles.length;
+    final candleSpaceWidth = chartWidth / totalVisibleCandles;
 
     for (int i = 0; i < candles.length; i++) {
       final candle = candles[i];
-      final x = i * (candleWidth + candleSpacing);
+      // Position volume bars evenly across the chart width
+      final x = i * candleSpaceWidth;
 
       final volumeHeight =
           (candle.volume / volumeData['max']!) * volumeChartHeight;
@@ -731,6 +766,7 @@ class StockChartPainter extends CustomPainter {
           ? bullishColor.withOpacity(0.6)
           : bearishColor.withOpacity(0.6);
 
+      // Use the actual candle width from the time scaling
       canvas.drawRect(
         Rect.fromLTWH(x, barY, candleWidth, volumeHeight),
         paint,
