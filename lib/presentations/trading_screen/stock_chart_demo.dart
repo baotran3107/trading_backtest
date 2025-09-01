@@ -4,7 +4,7 @@ import '../../model/candle_model.dart';
 
 /// Demo page showing how to use the StockChart widget
 class StockChartDemo extends StatefulWidget {
-  const StockChartDemo({Key? key}) : super(key: key);
+  const StockChartDemo({super.key});
 
   @override
   State<StockChartDemo> createState() => _StockChartDemoState();
@@ -54,104 +54,67 @@ class _StockChartDemoState extends State<StockChartDemo> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Stock Chart Demo'),
-        backgroundColor: Colors.blue[800],
+        title: const Text('Stock Chart'),
+        backgroundColor: Colors.grey[900],
         foregroundColor: Colors.white,
+        elevation: 0,
       ),
-      body: SingleChildScrollView(
+      backgroundColor: Colors.grey[900],
+      body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Interactive Stock Chart',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              'Stock Chart',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
             ),
             const SizedBox(height: 8),
             const Text(
-              'Features: Zoom, Pan, Hover tooltips, Volume bars, Grid lines',
+              'Interactive dark theme trading chart with volume',
               style: TextStyle(color: Colors.grey),
             ),
             const SizedBox(height: 16),
-            Container(
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey[300]!),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: StockChart(
-                candles: sampleData,
-                height: 400,
-                candleWidth: 10,
-                candleSpacing: 2,
-                bullishColor: Colors.green[600]!,
-                bearishColor: Colors.red[600]!,
-                backgroundColor: Colors.white,
-                showVolume: true,
-                showGrid: true,
-                showPriceLabels: true,
-                showTimeLabels: true,
-                enableInteraction: true,
-                onCandleTap: (candle) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Tapped: ${candle.time.month}/${candle.time.day} - Close: \$${candle.close.toStringAsFixed(2)}',
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey[700]!),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: StockChart(
+                  candles: sampleData,
+                  height: double.infinity,
+                  candleWidth: 10,
+                  candleSpacing: 2,
+                  bullishColor: Colors.greenAccent,
+                  bearishColor: Colors.redAccent,
+                  backgroundColor: Colors.grey[900]!,
+                  gridColor: Colors.grey[700]!,
+                  textColor: Colors.white,
+                  wickColor: Colors.grey[400]!,
+                  showVolume: true,
+                  showGrid: true,
+                  showPriceLabels: true,
+                  showTimeLabels: true,
+                  enableInteraction: true,
+                  labelTextStyle:
+                      const TextStyle(color: Colors.white, fontSize: 10),
+                  onCandleTap: (candle) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        backgroundColor: Colors.grey[800],
+                        content: Text(
+                          'Tapped: ${candle.time.month}/${candle.time.day} - Close: \$${candle.close.toStringAsFixed(2)}',
+                          style: const TextStyle(color: Colors.white),
+                        ),
                       ),
-                    ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 32),
-            const Text(
-              'Simple Stock Chart',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Simplified version without volume or interaction',
-              style: TextStyle(color: Colors.grey),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey[300]!),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: SimpleStockChart(
-                candles: sampleData,
-                height: 250,
-                bullishColor: Colors.blue[600]!,
-                bearishColor: Colors.orange[600]!,
-              ),
-            ),
-            const SizedBox(height: 32),
-            const Text(
-              'Dark Theme Chart',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey[800]!),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: StockChart(
-                candles: sampleData,
-                height: 350,
-                candleWidth: 8,
-                candleSpacing: 1,
-                bullishColor: Colors.greenAccent,
-                bearishColor: Colors.redAccent,
-                backgroundColor: Colors.grey[900]!,
-                gridColor: Colors.grey[700]!,
-                textColor: Colors.white,
-                wickColor: Colors.grey[400]!,
-                showVolume: true,
-                showGrid: true,
-                enableInteraction: false,
-                labelTextStyle:
-                    const TextStyle(color: Colors.white, fontSize: 9),
+                    );
+                  },
+                ),
               ),
             ),
           ],

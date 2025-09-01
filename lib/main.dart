@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'presentations/trading_screen/stock_chart_demo.dart';
+import 'presentations/data_import_example/data_import_example.dart';
 
 void main() {
   runApp(const MyApp());
@@ -10,13 +11,95 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    print('app startedd');
+
     return MaterialApp(
       title: 'Trading Game',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const StockChartDemo(),
+      home: const MainMenu(),
+    );
+  }
+}
+
+class MainMenu extends StatelessWidget {
+  const MainMenu({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        title: const Text('Trading Game'),
+      ),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.trending_up,
+              size: 100,
+              color: Colors.amber,
+            ),
+            const SizedBox(height: 32),
+            const Text(
+              'Trading Game',
+              style: TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Choose an option to get started',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey,
+              ),
+            ),
+            const SizedBox(height: 48),
+            SizedBox(
+              width: 250,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const StockChartDemo(),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.show_chart),
+                label: const Text('Stock Chart Demo'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: 250,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const DataImportExample(),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.data_usage),
+                label: const Text('XAUUSD Data Import'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
