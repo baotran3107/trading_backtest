@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../modules/chart/chart.dart';
 import '../../model/candle_model.dart';
+import '../../services/data_import_service.dart';
 
-/// Demo page showing how to use the StockChart widget
+/// Demo page showing how to use the StockChart widget with XAUUSD data
 class StockChartDemo extends StatefulWidget {
   const StockChartDemo({super.key});
 
@@ -11,53 +12,63 @@ class StockChartDemo extends StatefulWidget {
 }
 
 class _StockChartDemoState extends State<StockChartDemo> {
-  List<CandleStick> _generateSampleData() {
-    final List<CandleStick> candles = [];
-    final basePrice = 100.0;
-    final random = DateTime.now().millisecondsSinceEpoch;
+  final DataImportService _dataImportService = DataImportService();
+  List<CandleStick>? _xauusdData;
+  bool _isLoading = true;
+  String? _errorMessage;
+  Map<String, dynamic>? _metadata;
 
-    for (int i = 0; i < 50; i++) {
-      final time = DateTime.now().subtract(Duration(days: 50 - i));
+  @override
+  void initState() {
+    super.initState();
+    _loadXAUUSDData();
+  }
 
-      // Generate realistic-looking price movements
-      final priceVariation = (random + i * 123) % 20 - 10; // -10 to +10
-      final open = basePrice + (i * 0.5) + priceVariation;
+  Future<void> _loadXAUUSDData() async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
 
-      final highVariation = (random + i * 456) % 8; // 0 to 8
-      final lowVariation = (random + i * 789) % 8; // 0 to 8
-      final closeVariation = (random + i * 321) % 16 - 8; // -8 to +8
+      // Load metadata first
+      final metadata = await _dataImportService.getDataMetadata();
 
-      final high = open + highVariation;
-      final low = open - lowVariation;
-      final close = open + closeVariation;
+      // Load a subset of data for better performance (last 1000 candles)
+      final allData = await _dataImportService.importXAUUSDData();
+      final dataToShow = allData.length > 1000
+          ? allData.sublist(allData.length - 1000)
+          : allData;
 
-      final volume = 1000000 + ((random + i * 654) % 2000000); // 1M to 3M
-
-      candles.add(CandleStick(
-        open: open,
-        high: high,
-        low: low < open && low < close
-            ? low
-            : (open < close ? open : close) - 0.5,
-        close: close,
-        volume: volume.toDouble(),
-        time: time,
-      ));
+      setState(() {
+        _metadata = metadata;
+        _xauusdData = dataToShow;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Failed to load XAUUSD data: $e';
+        _isLoading = false;
+      });
     }
-
-    return candles;
   }
 
   @override
   Widget build(BuildContext context) {
-    final sampleData = _generateSampleData();
-
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Stock Chart'),
+        title: Text(_metadata != null
+            ? '${_metadata!['symbol']} - ${_metadata!['description']}'
+            : 'XAUUSD Chart'),
         backgroundColor: Colors.grey[900],
         foregroundColor: Colors.white,
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadXAUUSDData,
+          ),
+        ],
       ),
       backgroundColor: Colors.grey[900],
       body: Padding(
@@ -65,60 +76,125 @@ class _StockChartDemoState extends State<StockChartDemo> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Stock Chart',
-              style: TextStyle(
+            Text(
+              _metadata != null
+                  ? '${_metadata!['symbol']} (${_metadata!['description']})'
+                  : 'XAUUSD Chart',
+              style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Interactive dark theme trading chart with volume',
-              style: TextStyle(color: Colors.grey),
+            Text(
+              _metadata != null
+                  ? 'Period: ${_metadata!['period']}M | Bars: ${_xauusdData?.length ?? 0} | Currency: ${_metadata!['baseCurrency']}'
+                  : 'Loading XAUUSD data...',
+              style: const TextStyle(color: Colors.grey),
             ),
             const SizedBox(height: 16),
             Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey[700]!),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: StockChart(
-                  candles: sampleData,
-                  height: double.infinity,
-                  candleWidth: 10,
-                  candleSpacing: 2,
-                  bullishColor: Colors.greenAccent,
-                  bearishColor: Colors.redAccent,
-                  backgroundColor: Colors.grey[900]!,
-                  gridColor: Colors.grey[700]!,
-                  textColor: Colors.white,
-                  wickColor: Colors.grey[400]!,
-                  showVolume: true,
-                  showGrid: true,
-                  showPriceLabels: true,
-                  showTimeLabels: true,
-                  enableInteraction: true,
-                  labelTextStyle:
-                      const TextStyle(color: Colors.white, fontSize: 10),
-                  onCandleTap: (candle) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        backgroundColor: Colors.grey[800],
-                        content: Text(
-                          'Tapped: ${candle.time.month}/${candle.time.day} - Close: \$${candle.close.toStringAsFixed(2)}',
-                          style: const TextStyle(color: Colors.white),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
+              child: _buildChart(),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildChart() {
+    if (_isLoading) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(color: Colors.greenAccent),
+            SizedBox(height: 16),
+            Text(
+              'Loading XAUUSD data...',
+              style: TextStyle(color: Colors.white),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_errorMessage != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.error_outline,
+              color: Colors.redAccent,
+              size: 48,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              _errorMessage!,
+              style: const TextStyle(color: Colors.redAccent),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _loadXAUUSDData,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.greenAccent,
+                foregroundColor: Colors.black,
+              ),
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_xauusdData == null || _xauusdData!.isEmpty) {
+      return const Center(
+        child: Text(
+          'No data available',
+          style: TextStyle(color: Colors.white),
+        ),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey[700]!),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: StockChart(
+        candles: _xauusdData!,
+        height: double.infinity,
+        candleWidth: 6,
+        candleSpacing: 1,
+        bullishColor: Colors.greenAccent,
+        bearishColor: Colors.redAccent,
+        backgroundColor: Colors.grey[900]!,
+        gridColor: Colors.grey[700]!,
+        textColor: Colors.white,
+        wickColor: Colors.grey[400]!,
+        showVolume: true,
+        showGrid: true,
+        showPriceLabels: true,
+        showTimeLabels: true,
+        enableInteraction: true,
+        labelTextStyle: const TextStyle(color: Colors.white, fontSize: 10),
+        onCandleTap: (candle) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: Colors.grey[800],
+              content: Text(
+                'XAUUSD - ${candle.time.day}/${candle.time.month}/${candle.time.year} ${candle.time.hour}:${candle.time.minute.toString().padLeft(2, '0')}\n'
+                'O: \$${candle.open.toStringAsFixed(3)} H: \$${candle.high.toStringAsFixed(3)} L: \$${candle.low.toStringAsFixed(3)} C: \$${candle.close.toStringAsFixed(3)}\n'
+                'Volume: ${candle.volume.toStringAsFixed(0)}',
+                style: const TextStyle(color: Colors.white),
+              ),
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        },
       ),
     );
   }
