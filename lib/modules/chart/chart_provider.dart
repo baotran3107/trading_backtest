@@ -22,6 +22,13 @@ class ChartProvider extends ChangeNotifier {
   double _baseFocalPointX = 0.0;
   double _baseFocalPointY = 0.0;
 
+  // Scroll state for navigating through time
+  double _scrollOffset = 0.0; // Horizontal scroll offset in pixels
+  int _visibleStartIndex = 0; // Start index of currently visible data
+  int _visibleEndIndex = 0; // End index of currently visible data
+  bool _isScrollingToPast = false;
+  bool _isScrollingToFuture = false;
+
   // Getters
   CandleStick? get hoveredCandle => _hoveredCandle;
   Offset? get hoverPosition => _hoverPosition;
@@ -31,6 +38,11 @@ class ChartProvider extends ChangeNotifier {
   double get maxTimeScale => _maxTimeScale;
   double get minPriceScale => _minPriceScale;
   double get maxPriceScale => _maxPriceScale;
+  double get scrollOffset => _scrollOffset;
+  int get visibleStartIndex => _visibleStartIndex;
+  int get visibleEndIndex => _visibleEndIndex;
+  bool get isScrollingToPast => _isScrollingToPast;
+  bool get isScrollingToFuture => _isScrollingToFuture;
 
   /// Set hover state for candle
   void setHover(CandleStick? candle, Offset? position) {
@@ -120,7 +132,72 @@ class ChartProvider extends ChangeNotifier {
     }
   }
 
-  /// Get visible candles based on current scaling and chart width
+  /// Handle horizontal scroll for time navigation
+  void updateScrollOffset(double deltaX, int totalDataLength, double chartWidth, double candleWidth, double candleSpacing) {
+    final baseCandleWidth = candleWidth * _timeScale;
+    final baseCandleSpacing = candleSpacing * _timeScale;
+    final candleUnitWidth = baseCandleWidth + baseCandleSpacing;
+    
+    // Calculate maximum scroll offset based on data length
+    final maxVisibleCandles = (chartWidth / candleUnitWidth).floor();
+    final maxScrollOffset = (totalDataLength - maxVisibleCandles) * candleUnitWidth;
+    
+    // Update scroll offset with bounds checking
+    final newScrollOffset = (_scrollOffset - deltaX).clamp(0.0, maxScrollOffset.toDouble());
+    
+    if (newScrollOffset != _scrollOffset) {
+      _scrollOffset = newScrollOffset;
+      
+      // Update visible data indices
+      final startIndex = (_scrollOffset / candleUnitWidth).floor();
+      final endIndex = (startIndex + maxVisibleCandles).clamp(0, totalDataLength);
+      
+      _visibleStartIndex = startIndex;
+      _visibleEndIndex = endIndex;
+      
+      // Check if we're scrolling to boundaries for data loading
+      _isScrollingToPast = startIndex <= 5; // Near the beginning
+      _isScrollingToFuture = endIndex >= totalDataLength - 5; // Near the end
+      
+      notifyListeners();
+    }
+  }
+
+  /// Reset scroll position to center
+  void resetScroll(int totalDataLength, double chartWidth, double candleWidth, double candleSpacing) {
+    final baseCandleWidth = candleWidth * _timeScale;
+    final baseCandleSpacing = candleSpacing * _timeScale;
+    final candleUnitWidth = baseCandleWidth + baseCandleSpacing;
+    
+    final maxVisibleCandles = (chartWidth / candleUnitWidth).floor();
+    final centerStartIndex = ((totalDataLength - maxVisibleCandles) / 2).floor().clamp(0, totalDataLength - maxVisibleCandles);
+    
+    _scrollOffset = centerStartIndex * candleUnitWidth;
+    _visibleStartIndex = centerStartIndex;
+    _visibleEndIndex = (centerStartIndex + maxVisibleCandles).clamp(0, totalDataLength);
+    _isScrollingToPast = false;
+    _isScrollingToFuture = false;
+    
+    notifyListeners();
+  }
+
+  /// Set scroll position to a specific time/index
+  void scrollToIndex(int targetIndex, int totalDataLength, double chartWidth, double candleWidth, double candleSpacing) {
+    final baseCandleWidth = candleWidth * _timeScale;
+    final baseCandleSpacing = candleSpacing * _timeScale;
+    final candleUnitWidth = baseCandleWidth + baseCandleSpacing;
+    
+    final maxVisibleCandles = (chartWidth / candleUnitWidth).floor();
+    final centerIndex = (targetIndex - maxVisibleCandles / 2).floor().clamp(0, totalDataLength - maxVisibleCandles);
+    
+    _scrollOffset = centerIndex * candleUnitWidth;
+    _visibleStartIndex = centerIndex;
+    _visibleEndIndex = (centerIndex + maxVisibleCandles).clamp(0, totalDataLength);
+    
+    notifyListeners();
+  }
+
+  /// Get visible candles based on current scaling, scroll offset and chart width
   List<CandleStick> getVisibleCandles(
     List<CandleStick> allCandles,
     double chartWidth,
@@ -136,13 +213,27 @@ class ChartProvider extends ChangeNotifier {
     // Calculate how many candles can fit in the chart width
     final maxVisibleCandles = (chartWidth / candleUnitWidth).floor();
     final totalCandles = allCandles.length;
-    final visibleCandleCount = maxVisibleCandles.clamp(1, totalCandles);
-
-    // Calculate start index to center the visible candles
-    final startIndex = ((totalCandles - visibleCandleCount) / 2)
-        .floor()
-        .clamp(0, totalCandles - visibleCandleCount);
-    final endIndex = (startIndex + visibleCandleCount).clamp(0, totalCandles);
+    
+    // Use scroll offset to determine visible range
+    int startIndex;
+    int endIndex;
+    
+    if (_scrollOffset == 0.0 && _visibleStartIndex == 0 && _visibleEndIndex == 0) {
+      // Initial state - center the view
+      final visibleCandleCount = maxVisibleCandles.clamp(1, totalCandles);
+      startIndex = ((totalCandles - visibleCandleCount) / 2)
+          .floor()
+          .clamp(0, totalCandles - visibleCandleCount);
+      endIndex = (startIndex + visibleCandleCount).clamp(0, totalCandles);
+      
+      // Update internal state
+      _visibleStartIndex = startIndex;
+      _visibleEndIndex = endIndex;
+    } else {
+      // Use current scroll position
+      startIndex = _visibleStartIndex;
+      endIndex = _visibleEndIndex;
+    }
 
     return allCandles.sublist(startIndex, endIndex);
   }
@@ -166,7 +257,7 @@ class ChartProvider extends ChangeNotifier {
   ) {
     final candleUnitWidth = actualCandleWidth + actualCandleSpacing;
     final visibleCandleIndex = (localX / candleUnitWidth).floor();
-    final actualCandleIndex = startIndex + visibleCandleIndex;
+    final actualCandleIndex = _visibleStartIndex + visibleCandleIndex;
 
     if (actualCandleIndex >= 0 && actualCandleIndex < allCandles.length) {
       return allCandles[actualCandleIndex];

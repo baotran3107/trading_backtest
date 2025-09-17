@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import '../../model/candle_model.dart';
+import 'chart_provider.dart';
 
 /// A comprehensive stock chart widget that displays candlestick data with advanced features
 class StockChart extends StatefulWidget {
@@ -23,7 +25,8 @@ class StockChart extends StatefulWidget {
   final bool enableInteraction;
   final double volumeHeightRatio;
   final TextStyle? labelTextStyle;
-  final Function(CandleStick)? onCandleTap;
+  final VoidCallback? onLoadPastData;
+  final VoidCallback? onLoadFutureData;
 
   const StockChart({
     Key? key,
@@ -31,21 +34,22 @@ class StockChart extends StatefulWidget {
     this.height = 400.0,
     this.candleWidth = 8.0,
     this.candleSpacing = 2.0,
-    this.bullishColor = Colors.green,
-    this.bearishColor = Colors.red,
-    this.dojiColor = Colors.grey,
-    this.wickColor = Colors.black87,
-    this.backgroundColor = Colors.white,
-    this.gridColor = const Color(0xFFE0E0E0),
-    this.textColor = Colors.black87,
+    this.bullishColor = const Color(0xFF26A69A), // Teal/green for bullish
+    this.bearishColor = const Color(0xFFEF5350), // Red for bearish
+    this.dojiColor = const Color(0xFF78909C), // Blue-grey for doji
+    this.wickColor = const Color(0xFF90A4AE), // Light blue-grey for wicks
+    this.backgroundColor = const Color(0xFF1E2328), // Dark background
+    this.gridColor = const Color(0xFF2B3139), // Dark grid lines
+    this.textColor = const Color(0xFFB7BDC6), // Light grey text
     this.showGrid = true,
-    this.showVolume = true,
+    this.showVolume = false, // Disabled by default
     this.showPriceLabels = true,
     this.showTimeLabels = true,
     this.enableInteraction = true,
     this.volumeHeightRatio = 0.2,
     this.labelTextStyle,
-    this.onCandleTap,
+    this.onLoadPastData,
+    this.onLoadFutureData,
   }) : super(key: key);
 
   @override
@@ -53,23 +57,6 @@ class StockChart extends StatefulWidget {
 }
 
 class _StockChartState extends State<StockChart> {
-  CandleStick? _hoveredCandle;
-  Offset? _hoverPosition;
-
-  // Scaling factors for candles
-  double _timeScale = 1.0; // X-axis scaling (candle width and spacing)
-  double _priceScale =
-      1.0; // Y-axis scaling (price range compression/expansion)
-
-  static const double _minTimeScale = 0.3;
-  static const double _maxTimeScale = 3.0;
-  static const double _minPriceScale = 0.5;
-  static const double _maxPriceScale = 2.0;
-
-  // For pinch-to-zoom gesture
-  double _baseFocalPointX = 0.0;
-  double _baseFocalPointY = 0.0;
-
   @override
   void initState() {
     super.initState();
@@ -78,59 +65,6 @@ class _StockChartState extends State<StockChart> {
   @override
   void dispose() {
     super.dispose();
-  }
-
-  // Scale with gesture (pinch-to-zoom)
-  void _onScaleStart(ScaleStartDetails details) {
-    _baseFocalPointX = details.focalPoint.dx;
-    _baseFocalPointY = details.focalPoint.dy;
-  }
-
-  void _onScaleUpdate(ScaleUpdateDetails details) {
-    if (details.scale != 1.0) {
-      setState(() {
-        // Horizontal scaling (time axis) based on horizontal focal point movement
-        final deltaX = (details.focalPoint.dx - _baseFocalPointX).abs();
-        final deltaY = (details.focalPoint.dy - _baseFocalPointY).abs();
-
-        if (deltaX > deltaY) {
-          // Primarily horizontal gesture - adjust time scale
-          _timeScale =
-              (_timeScale * details.scale).clamp(_minTimeScale, _maxTimeScale);
-        } else {
-          // Primarily vertical gesture - adjust price scale
-          _priceScale = (_priceScale * details.scale)
-              .clamp(_minPriceScale, _maxPriceScale);
-        }
-      });
-    }
-  }
-
-  void _resetScaling() {
-    setState(() {
-      _timeScale = 1.0;
-      _priceScale = 1.0;
-    });
-  }
-
-  // Handle vertical pan on price labels for price scaling
-  void _onPricePanUpdate(DragUpdateDetails details) {
-    setState(() {
-      // Calculate scale factor based on vertical movement
-      // Negative delta.dy means upward movement (zoom in)
-      // Positive delta.dy means downward movement (zoom out)
-      final scaleFactor = 1.0 - (details.delta.dy * 0.01); // Adjust sensitivity
-      _priceScale =
-          (_priceScale * scaleFactor).clamp(_minPriceScale, _maxPriceScale);
-    });
-  }
-
-  void _onTimePanUpdate(DragUpdateDetails details) {
-    setState(() {
-      final scaleFactor = 1.0 + (details.delta.dx * 0.01); // Adjust sensitivity
-      _timeScale =
-          (_timeScale * scaleFactor).clamp(_minTimeScale, _maxTimeScale);
-    });
   }
 
   @override
@@ -148,229 +82,241 @@ class _StockChartState extends State<StockChart> {
       );
     }
 
-    return Container(
-      height: widget.height,
-      color: widget.backgroundColor,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final chartWidth = constraints.maxWidth;
-          return _buildChart(chartWidth);
-        },
+    return ChangeNotifierProvider(
+      create: (context) => ChartProvider(),
+      child: Container(
+        height: widget.height,
+        color: widget.backgroundColor,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final chartWidth = constraints.maxWidth;
+            return _buildChart(chartWidth);
+          },
+        ),
       ),
     );
   }
 
   Widget _buildChart(double chartWidth) {
-    // Calculate actual candle width based on time scale
-    final baseCandleWidth = widget.candleWidth * _timeScale;
-    final baseCandleSpacing = widget.candleSpacing * _timeScale;
-    final candleUnitWidth = baseCandleWidth + baseCandleSpacing;
+    return Consumer<ChartProvider>(
+      builder: (context, chartProvider, child) {
+        // Calculate actual candle width based on time scale
+        final scaledDimensions = chartProvider.getScaledDimensions(widget.candleWidth, widget.candleSpacing);
+        final baseCandleWidth = scaledDimensions['candleWidth']!;
+        final baseCandleSpacing = scaledDimensions['candleSpacing']!;
 
-    // Calculate how many candles can fit in the chart width
-    final maxVisibleCandles = (chartWidth / candleUnitWidth).floor();
-    final totalCandles = widget.candles.length;
-    final visibleCandleCount = maxVisibleCandles.clamp(1, totalCandles);
+        // Get the visible candles using the provider
+        final visibleCandles = chartProvider.getVisibleCandles(
+          widget.candles,
+          chartWidth,
+          widget.candleWidth,
+          widget.candleSpacing,
+        );
 
-    // Calculate start index to center the visible candles
-    final startIndex = ((totalCandles - visibleCandleCount) / 2)
-        .floor()
-        .clamp(0, totalCandles - visibleCandleCount);
-    final endIndex = (startIndex + visibleCandleCount).clamp(0, totalCandles);
+        // Define gesture handlers within the Consumer context
+        void onScaleStart(ScaleStartDetails details) {
+          chartProvider.startScale(details.focalPoint.dx, details.focalPoint.dy);
+        }
 
-    // Get the visible candles
-    final visibleCandles = widget.candles.sublist(startIndex, endIndex);
+        void onScaleUpdate(ScaleUpdateDetails details) {
+          if (details.scale == 1.0 && details.focalPointDelta != Offset.zero) {
+            // This is a pan gesture, handle horizontal scrolling
+            final layoutBuilder = context.findRenderObject() as RenderBox?;
+            if (layoutBuilder != null) {
+              final chartWidth = layoutBuilder.size.width;
+              chartProvider.updateScrollOffset(
+                details.focalPointDelta.dx,
+                widget.candles.length,
+                chartWidth,
+                widget.candleWidth,
+                widget.candleSpacing,
+              );
+              
+              // Check if we need to load more data
+              if (chartProvider.isScrollingToPast && widget.onLoadPastData != null) {
+                widget.onLoadPastData!();
+              } else if (chartProvider.isScrollingToFuture && widget.onLoadFutureData != null) {
+                widget.onLoadFutureData!();
+              }
+            }
+          } else if (details.scale != 1.0) {
+            // This is a scale gesture, handle zooming
+            chartProvider.updateScale(details.scale, details.focalPoint.dx, details.focalPoint.dy);
+          }
+        }
 
-    return Stack(
-      children: [
-        // Main chart area
-        Listener(
-          onPointerSignal: widget.enableInteraction ? _onPointerSignal : null,
-          child: MouseRegion(
-            onHover: widget.enableInteraction
-                ? (event) => _onHover(
-                    event, baseCandleWidth, baseCandleSpacing, startIndex)
-                : null,
-            onExit: widget.enableInteraction ? _onHoverExit : null,
-            child: widget.enableInteraction
-                ? GestureDetector(
-                    onScaleStart: _onScaleStart,
-                    onScaleUpdate: _onScaleUpdate,
-                    onTapDown: (details) => _onTapDown(details, baseCandleWidth,
-                        baseCandleSpacing, startIndex),
-                    onDoubleTap: _onDoubleTap,
-                    child: CustomPaint(
-                      size: Size(chartWidth, widget.height),
-                      painter: StockChartPainter(
-                        candles: visibleCandles,
-                        candleWidth: baseCandleWidth,
-                        candleSpacing: baseCandleSpacing,
-                        timeScale: _timeScale,
-                        priceScale: _priceScale,
-                        chartWidth: chartWidth,
-                        bullishColor: widget.bullishColor,
-                        bearishColor: widget.bearishColor,
-                        dojiColor: widget.dojiColor,
-                        wickColor: widget.wickColor,
-                        gridColor: widget.gridColor,
-                        textColor: widget.textColor,
-                        showGrid: widget.showGrid,
-                        showVolume: widget.showVolume,
-                        showPriceLabels: widget.showPriceLabels,
-                        showTimeLabels: widget.showTimeLabels,
-                        volumeHeightRatio: widget.volumeHeightRatio,
-                        labelTextStyle: widget.labelTextStyle ??
-                            TextStyle(color: widget.textColor, fontSize: 10),
-                        hoveredCandle: _hoveredCandle,
-                        hoverPosition: _hoverPosition,
+        void onDoubleTap() {
+          chartProvider.resetScaling();
+        }
+
+        void onPricePanUpdate(DragUpdateDetails details) {
+          chartProvider.updatePriceScaleFromPan(details.delta.dy);
+        }
+
+        void onTimePanUpdate(DragUpdateDetails details) {
+          chartProvider.updateTimeScaleFromPan(details.delta.dx);
+        }
+
+        void onHover(PointerHoverEvent event) {
+          final RenderBox renderBox = context.findRenderObject() as RenderBox;
+          final localPosition = renderBox.globalToLocal(event.position);
+
+          final hoveredCandle = chartProvider.getCandleAtPosition(
+            widget.candles,
+            localPosition.dx,
+            baseCandleWidth,
+            baseCandleSpacing,
+            chartProvider.visibleStartIndex,
+          );
+
+          chartProvider.setHover(hoveredCandle, localPosition);
+        }
+
+        void onHoverExit(PointerExitEvent event) {
+          chartProvider.clearHover();
+        }
+
+        return Stack(
+          children: [
+            // Main chart area with scroll handling
+            Listener(
+              onPointerSignal: widget.enableInteraction ? _onPointerSignal : null,
+              child: MouseRegion(
+                onHover: widget.enableInteraction ? onHover : null,
+                onExit: widget.enableInteraction ? onHoverExit : null,
+                child: widget.enableInteraction
+                    ? GestureDetector(
+                        onScaleStart: onScaleStart,
+                        onScaleUpdate: onScaleUpdate,
+                        onDoubleTap: onDoubleTap,
+                        child: CustomPaint(
+                          size: Size(chartWidth, widget.height),
+                          painter: StockChartPainter(
+                            candles: visibleCandles,
+                            candleWidth: baseCandleWidth,
+                            candleSpacing: baseCandleSpacing,
+                            timeScale: chartProvider.timeScale,
+                            priceScale: chartProvider.priceScale,
+                            chartWidth: chartWidth,
+                            bullishColor: widget.bullishColor,
+                            bearishColor: widget.bearishColor,
+                            dojiColor: widget.dojiColor,
+                            wickColor: widget.wickColor,
+                            gridColor: widget.gridColor,
+                            textColor: widget.textColor,
+                            showGrid: widget.showGrid,
+                            showVolume: widget.showVolume,
+                            showPriceLabels: widget.showPriceLabels,
+                            showTimeLabels: widget.showTimeLabels,
+                            volumeHeightRatio: widget.volumeHeightRatio,
+                            labelTextStyle: widget.labelTextStyle ??
+                                TextStyle(color: widget.textColor, fontSize: 10),
+                            hoveredCandle: chartProvider.hoveredCandle,
+                            hoverPosition: chartProvider.hoverPosition,
+                          ),
+                        ),
+                      )
+                    : CustomPaint(
+                        size: Size(chartWidth, widget.height),
+                        painter: StockChartPainter(
+                          candles: visibleCandles,
+                          candleWidth: baseCandleWidth,
+                          candleSpacing: baseCandleSpacing,
+                          timeScale: chartProvider.timeScale,
+                          priceScale: chartProvider.priceScale,
+                          chartWidth: chartWidth,
+                          bullishColor: widget.bullishColor,
+                          bearishColor: widget.bearishColor,
+                          dojiColor: widget.dojiColor,
+                          wickColor: widget.wickColor,
+                          gridColor: widget.gridColor,
+                          textColor: widget.textColor,
+                          showGrid: widget.showGrid,
+                          showVolume: widget.showVolume,
+                          showPriceLabels: widget.showPriceLabels,
+                          showTimeLabels: widget.showTimeLabels,
+                          volumeHeightRatio: widget.volumeHeightRatio,
+                          labelTextStyle: widget.labelTextStyle ??
+                              TextStyle(color: widget.textColor, fontSize: 10),
+                          hoveredCandle: chartProvider.hoveredCandle,
+                          hoverPosition: chartProvider.hoverPosition,
+                        ),
+                      ),
+              ),
+            ),
+
+            // Price labels gesture area (right side)
+            if (widget.enableInteraction && widget.showPriceLabels)
+              Positioned(
+                right: 0,
+                top: 0,
+                bottom: widget.showTimeLabels
+                    ? 30
+                    : 0, // Account for time labels at bottom
+                width: 80, // Width of the price label area
+                child: GestureDetector(
+                  onPanUpdate: onPricePanUpdate,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.transparent,
+                      border: Border(
+                        left: BorderSide(
+                          color: widget.gridColor.withOpacity(0.3),
+                          width: 1,
+                        ),
                       ),
                     ),
-                  )
-                : CustomPaint(
-                    size: Size(chartWidth, widget.height),
-                    painter: StockChartPainter(
-                      candles: visibleCandles,
-                      candleWidth: baseCandleWidth,
-                      candleSpacing: baseCandleSpacing,
-                      timeScale: _timeScale,
-                      priceScale: _priceScale,
-                      chartWidth: chartWidth,
-                      bullishColor: widget.bullishColor,
-                      bearishColor: widget.bearishColor,
-                      dojiColor: widget.dojiColor,
-                      wickColor: widget.wickColor,
-                      gridColor: widget.gridColor,
-                      textColor: widget.textColor,
-                      showGrid: widget.showGrid,
-                      showVolume: widget.showVolume,
-                      showPriceLabels: widget.showPriceLabels,
-                      showTimeLabels: widget.showTimeLabels,
-                      volumeHeightRatio: widget.volumeHeightRatio,
-                      labelTextStyle: widget.labelTextStyle ??
-                          TextStyle(color: widget.textColor, fontSize: 10),
-                      hoveredCandle: _hoveredCandle,
-                      hoverPosition: _hoverPosition,
+                    child: Center(
+                      child: Icon(
+                        Icons.swap_vert,
+                        color: widget.textColor.withOpacity(0.3),
+                        size: 16,
+                      ),
                     ),
-                  ),
-          ),
-        ),
-
-        // Price labels gesture area (right side)
-        if (widget.enableInteraction && widget.showPriceLabels)
-          Positioned(
-            right: 0,
-            top: 0,
-            bottom: widget.showTimeLabels
-                ? 30
-                : 0, // Account for time labels at bottom
-            width: 80, // Width of the price label area
-            child: GestureDetector(
-              onPanUpdate: _onPricePanUpdate,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.transparent,
-                  border: Border(
-                    left: BorderSide(
-                      color: widget.gridColor.withOpacity(0.3),
-                      width: 1,
-                    ),
-                  ),
-                ),
-                child: Center(
-                  child: Icon(
-                    Icons.swap_vert,
-                    color: widget.textColor.withOpacity(0.3),
-                    size: 16,
                   ),
                 ),
               ),
-            ),
-          ),
 
-        // Time labels gesture area (bottom)
-        if (widget.enableInteraction && widget.showTimeLabels)
-          Positioned(
-            left: 0,
-            right: widget.showPriceLabels
-                ? 80
-                : 0, // Account for price labels on right
-            bottom: 0,
-            height: 30, // Height of the time label area
-            child: GestureDetector(
-              onPanUpdate: _onTimePanUpdate,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.transparent,
-                  border: Border(
-                    top: BorderSide(
-                      color: widget.gridColor.withOpacity(0.3),
-                      width: 1,
+            // Time labels gesture area (bottom)
+            if (widget.enableInteraction && widget.showTimeLabels)
+              Positioned(
+                left: 0,
+                right: widget.showPriceLabels
+                    ? 80
+                    : 0, // Account for price labels on right
+                bottom: 0,
+                height: 30, // Height of the time label area
+                child: GestureDetector(
+                  onPanUpdate: onTimePanUpdate,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.transparent,
+                      border: Border(
+                        top: BorderSide(
+                          color: widget.gridColor.withOpacity(0.3),
+                          width: 1,
+                        ),
+                      ),
+                    ),
+                    child: Center(
+                      child: Icon(
+                        Icons.swap_horiz,
+                        color: widget.textColor.withOpacity(0.3),
+                        size: 16,
+                      ),
                     ),
                   ),
                 ),
-                child: Center(
-                  child: Icon(
-                    Icons.swap_horiz,
-                    color: widget.textColor.withOpacity(0.3),
-                    size: 16,
-                  ),
-                ),
               ),
-            ),
-          ),
-      ],
+          ],
+        );
+      },
     );
   }
 
   void _onPointerSignal(PointerSignalEvent event) {
     // Disable pointer signal for now since we're using pinch-to-zoom
     // Can be re-enabled for mouse wheel support if needed
-  }
-
-  void _onDoubleTap() {
-    _resetScaling();
-  }
-
-  void _onHover(PointerHoverEvent event, double actualCandleWidth,
-      double actualCandleSpacing, int startIndex) {
-    final RenderBox renderBox = context.findRenderObject() as RenderBox;
-    final localPosition = renderBox.globalToLocal(event.position);
-
-    // Calculate which visible candle is being hovered based on actual candle widths
-    final candleUnitWidth = actualCandleWidth + actualCandleSpacing;
-    final visibleCandleIndex = (localPosition.dx / candleUnitWidth).floor();
-
-    // Convert to actual candle index in the full dataset
-    final actualCandleIndex = startIndex + visibleCandleIndex;
-
-    if (actualCandleIndex >= 0 && actualCandleIndex < widget.candles.length) {
-      setState(() {
-        _hoveredCandle = widget.candles[actualCandleIndex];
-        _hoverPosition = localPosition;
-      });
-    }
-  }
-
-  void _onHoverExit(PointerExitEvent event) {
-    setState(() {
-      _hoveredCandle = null;
-      _hoverPosition = null;
-    });
-  }
-
-  void _onTapDown(TapDownDetails details, double actualCandleWidth,
-      double actualCandleSpacing, int startIndex) {
-    // Calculate which visible candle is being tapped based on actual candle widths
-    final candleUnitWidth = actualCandleWidth + actualCandleSpacing;
-    final visibleCandleIndex =
-        (details.localPosition.dx / candleUnitWidth).floor();
-
-    // Convert to actual candle index in the full dataset
-    final actualCandleIndex = startIndex + visibleCandleIndex;
-
-    if (actualCandleIndex >= 0 && actualCandleIndex < widget.candles.length) {
-      final tappedCandle = widget.candles[actualCandleIndex];
-      widget.onCandleTap?.call(tappedCandle);
-    }
   }
 }
 
@@ -424,42 +370,31 @@ class StockChartPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (candles.isEmpty) return;
 
-    // Calculate price and volume ranges
+    // Calculate price range
     final priceData = _calculatePriceRange();
-    final volumeData = _calculateVolumeRange();
 
-    // Calculate chart areas
-    final priceChartHeight =
-        showVolume ? size.height * (1 - volumeHeightRatio) : size.height;
-    final volumeChartHeight =
-        showVolume ? size.height * volumeHeightRatio : 0.0;
-    final volumeChartTop = priceChartHeight;
+    // Use full height for price chart since volume is removed
+    final priceChartHeight = size.height;
+
+    // Draw candlesticks first (behind other elements)
+    _drawCandlesticks(canvas, priceData, priceChartHeight);
 
     // Draw grid
     if (showGrid) {
-      _drawGrid(
-          canvas, size, priceChartHeight, volumeChartTop, volumeChartHeight);
+      _drawGrid(canvas, size, priceChartHeight);
     }
 
-    // Draw price labels
+    // Draw price labels (on top of candlesticks)
     if (showPriceLabels) {
       _drawPriceLabels(canvas, size, priceData, priceChartHeight);
     }
 
-    // Draw time labels
+    // Draw time labels (on top of candlesticks)
     if (showTimeLabels) {
       _drawTimeLabels(canvas, size);
     }
 
-    // Draw candlesticks
-    _drawCandlesticks(canvas, priceData, priceChartHeight);
-
-    // Draw volume bars
-    if (showVolume) {
-      _drawVolumeBars(canvas, volumeData, volumeChartTop, volumeChartHeight);
-    }
-
-    // Draw hover tooltip
+    // Draw hover tooltip (on top of everything)
     if (hoveredCandle != null && hoverPosition != null) {
       _drawHoverTooltip(canvas, size);
     }
@@ -474,52 +409,44 @@ class StockChartPainter extends CustomPainter {
       if (candle.high > maxPrice) maxPrice = candle.high;
     }
 
-    // Add padding
+    // Add base padding
     final baseRange = maxPrice - minPrice;
-    final padding = baseRange * 0.05;
-    minPrice -= padding;
-    maxPrice += padding;
+    final basePadding = baseRange * 0.05;
+    final paddedMinPrice = minPrice - basePadding;
+    final paddedMaxPrice = maxPrice + basePadding;
+    final paddedRange = paddedMaxPrice - paddedMinPrice;
 
-    // Apply price scaling - compress or expand the price range
-    final center = (minPrice + maxPrice) / 2;
-    final scaledRange = (maxPrice - minPrice) / priceScale;
+    // Apply price scaling with intelligent bounds
+    final center = (paddedMinPrice + paddedMaxPrice) / 2;
 
-    final scaledMinPrice = center - (scaledRange / 2);
-    final scaledMaxPrice = center + (scaledRange / 2);
+    // Calculate the scaled range, ensuring it doesn't create content overflow
+    // When priceScale > 1.0 (zooming in), we compress the visible range
+    // When priceScale < 1.0 (zooming out), we expand the visible range
+    final scaledRange = paddedRange / priceScale;
+
+    // Allow much smaller visible range for better zoom out capability
+    final minVisibleRange = baseRange * 0.01; // Minimum 1% of original range (was 10%)
+    final constrainedRange =
+        scaledRange.clamp(minVisibleRange, paddedRange * 10); // Increased max range for better zoom out
+
+    final scaledMinPrice = center - (constrainedRange / 2);
+    final scaledMaxPrice = center + (constrainedRange / 2);
 
     return {
       'min': scaledMinPrice,
       'max': scaledMaxPrice,
-      'range': scaledMaxPrice - scaledMinPrice,
+      'range': constrainedRange,
     };
   }
 
-  Map<String, double> _calculateVolumeRange() {
-    if (!showVolume) return {'min': 0, 'max': 0, 'range': 0};
-
-    double minVolume = 0;
-    double maxVolume = candles.first.volume;
-
-    for (final candle in candles) {
-      if (candle.volume > maxVolume) maxVolume = candle.volume;
-    }
-
-    return {
-      'min': minVolume,
-      'max': maxVolume,
-      'range': maxVolume - minVolume,
-    };
-  }
-
-  void _drawGrid(Canvas canvas, Size size, double priceChartHeight,
-      double volumeChartTop, double volumeChartHeight) {
+  void _drawGrid(Canvas canvas, Size size, double priceChartHeight) {
     final gridPaint = Paint()
       ..color = gridColor
-      ..strokeWidth = 0.5
+      ..strokeWidth = 1.0 // Increased for better visibility
       ..style = PaintingStyle.stroke;
 
-    // Horizontal grid lines for price chart
-    const priceGridLines = 5;
+    // Horizontal grid lines for price chart - more evenly distributed
+    const priceGridLines = 8; // Increased number of lines for better separation
     for (int i = 0; i <= priceGridLines; i++) {
       final y = (priceChartHeight / priceGridLines) * i;
       canvas.drawLine(
@@ -529,22 +456,15 @@ class StockChartPainter extends CustomPainter {
       );
     }
 
-    // Horizontal grid lines for volume chart
-    if (showVolume) {
-      const volumeGridLines = 2;
-      for (int i = 0; i <= volumeGridLines; i++) {
-        final y = volumeChartTop + (volumeChartHeight / volumeGridLines) * i;
-        canvas.drawLine(
-          Offset(0, y),
-          Offset(size.width, y),
-          gridPaint,
-        );
-      }
-    }
-
-    // Vertical grid lines
-    final candleStep = (candleWidth + candleSpacing) * 10;
-    for (double x = 0; x < size.width; x += candleStep) {
+    // Vertical grid lines - more evenly spaced like in trading apps
+    final effectiveCandleWidth = (candleWidth + candleSpacing) * timeScale;
+    final gridSpacing = effectiveCandleWidth * 8; // More consistent spacing
+    
+    // Ensure we have at least some vertical lines
+    final minGridSpacing = size.width / 10;
+    final actualGridSpacing = gridSpacing.clamp(minGridSpacing, size.width / 4);
+    
+    for (double x = 0; x <= size.width; x += actualGridSpacing) {
       canvas.drawLine(
         Offset(x, 0),
         Offset(x, size.height),
@@ -557,31 +477,44 @@ class StockChartPainter extends CustomPainter {
       double chartHeight) {
     final textPainter = TextPainter(textDirection: TextDirection.ltr);
 
-    const labelCount = 5;
+    const labelCount = 8; // Match the grid lines for better alignment
     for (int i = 0; i <= labelCount; i++) {
       final price =
           priceData['min']! + (priceData['range']! * (1 - i / labelCount));
       final y = (chartHeight / labelCount) * i;
 
       textPainter.text = TextSpan(
-        text: '\$${price.toStringAsFixed(2)}',
-        style: labelTextStyle,
+        text: price.toStringAsFixed(3), // More precision like in trading apps
+        style: labelTextStyle.copyWith(
+          color: textColor,
+          fontSize: 11,
+          fontWeight: FontWeight.w500,
+        ),
       );
       textPainter.layout();
 
-      // Position labels on the right side of the chart
-      final rightX = size.width - textPainter.width - 7;
+      // Position labels on the right side of the chart with dark background
+      final rightX = size.width - textPainter.width - 8;
 
-      // Draw background for better readability
+      // Draw semi-transparent background for better readability while showing candles behind
       final rect = Rect.fromLTWH(
-        rightX - 2,
-        y - textPainter.height / 2,
-        textPainter.width + 4,
-        textPainter.height,
+        rightX - 4,
+        y - textPainter.height / 2 - 2,
+        textPainter.width + 8,
+        textPainter.height + 4,
       );
       canvas.drawRect(
         rect,
-        Paint()..color = Colors.white.withOpacity(0.8),
+        Paint()..color = const Color(0xFF2B3139).withOpacity(0.6), // More transparent to show candles behind
+      );
+
+      // Draw border around price label
+      canvas.drawRect(
+        rect,
+        Paint()
+          ..color = gridColor.withOpacity(0.8)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 0.5,
       );
 
       textPainter.paint(canvas, Offset(rightX, y - textPainter.height / 2));
@@ -592,7 +525,7 @@ class StockChartPainter extends CustomPainter {
     final textPainter = TextPainter(textDirection: TextDirection.ltr);
 
     // Show time labels for visible candles based on their actual spacing
-    final labelStep = (candles.length / 5).ceil().clamp(1, candles.length);
+    final labelStep = (candles.length / 6).ceil().clamp(1, candles.length);
 
     for (int i = 0; i < candles.length; i += labelStep) {
       // Position time labels based on actual candle positions
@@ -601,26 +534,39 @@ class StockChartPainter extends CustomPainter {
 
       textPainter.text = TextSpan(
         text: '${time.month}/${time.day}',
-        style: labelTextStyle,
+        style: labelTextStyle.copyWith(
+          color: textColor,
+          fontSize: 10,
+          fontWeight: FontWeight.w400,
+        ),
       );
       textPainter.layout();
 
-      // Draw background
+      // Draw semi-transparent background matching the theme
       final rect = Rect.fromLTWH(
-        x - textPainter.width / 2,
-        size.height - textPainter.height - 2,
+        x - textPainter.width / 2 - 2,
+        size.height - textPainter.height - 4,
         textPainter.width + 4,
-        textPainter.height,
+        textPainter.height + 2,
       );
       canvas.drawRect(
         rect,
-        Paint()..color = Colors.white.withOpacity(0.8),
+        Paint()..color = const Color(0xFF2B3139).withOpacity(0.6), // More transparent to show candles behind
+      );
+
+      // Draw border
+      canvas.drawRect(
+        rect,
+        Paint()
+          ..color = gridColor.withOpacity(0.8)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 0.5,
       );
 
       textPainter.paint(
         canvas,
-        Offset(x - textPainter.width / 2 + 2,
-            size.height - textPainter.height - 2),
+        Offset(x - textPainter.width / 2,
+            size.height - textPainter.height - 3),
       );
     }
   }
@@ -655,7 +601,7 @@ class StockChartPainter extends CustomPainter {
     final paint = Paint();
     final wickPaint = Paint()
       ..color = wickColor
-      ..strokeWidth = 1.0
+      ..strokeWidth = 1.5 // Slightly thicker wicks for better visibility
       ..style = PaintingStyle.stroke;
 
     // Calculate Y positions
@@ -683,11 +629,11 @@ class StockChartPainter extends CustomPainter {
     // Draw candle body
     final bodyTop = candle.isBullish ? closeY : openY;
     final bodyBottom = candle.isBullish ? openY : closeY;
-    final bodyHeight = (bodyBottom - bodyTop).abs().clamp(1.0, double.infinity);
+    final bodyHeight = (bodyBottom - bodyTop).abs().clamp(1.5, double.infinity); // Minimum height for visibility
 
     if (candle.isDoji) {
       paint.color = dojiColor;
-      paint.strokeWidth = 2.0;
+      paint.strokeWidth = 2.5;
       paint.style = PaintingStyle.stroke;
       canvas.drawLine(
         Offset(x - candleWidth / 2, bodyTop),
@@ -709,44 +655,18 @@ class StockChartPainter extends CustomPainter {
       );
 
       if (candle.isBullish) {
+        // Bullish candles: filled with border for better contrast
+        paint.style = PaintingStyle.fill;
+        canvas.drawRect(rect, paint);
+        // Add border
         paint.style = PaintingStyle.stroke;
-        paint.strokeWidth = 1.5;
+        paint.strokeWidth = 1.0;
         canvas.drawRect(rect, paint);
       } else {
+        // Bearish candles: solid fill
         paint.style = PaintingStyle.fill;
         canvas.drawRect(rect, paint);
       }
-    }
-  }
-
-  void _drawVolumeBars(
-    Canvas canvas,
-    Map<String, double> volumeData,
-    double volumeChartTop,
-    double volumeChartHeight,
-  ) {
-    final paint = Paint();
-    final totalVisibleCandles = candles.length;
-    final candleSpaceWidth = chartWidth / totalVisibleCandles;
-
-    for (int i = 0; i < candles.length; i++) {
-      final candle = candles[i];
-      // Position volume bars evenly across the chart width
-      final x = i * candleSpaceWidth;
-
-      final volumeHeight =
-          (candle.volume / volumeData['max']!) * volumeChartHeight;
-      final barY = volumeChartTop + volumeChartHeight - volumeHeight;
-
-      paint.color = candle.isBullish
-          ? bullishColor.withOpacity(0.6)
-          : bearishColor.withOpacity(0.6);
-
-      // Use the actual candle width from the time scaling
-      canvas.drawRect(
-        Rect.fromLTWH(x, barY, candleWidth, volumeHeight),
-        paint,
-      );
     }
   }
 
@@ -755,55 +675,65 @@ class StockChartPainter extends CustomPainter {
 
     final textPainter = TextPainter(textDirection: TextDirection.ltr);
     final tooltipPaint = Paint()
-      ..color = Colors.black87
+      ..color = const Color(0xFF2B3139) // Dark background matching the theme
       ..style = PaintingStyle.fill;
 
     final borderPaint = Paint()
-      ..color = Colors.white
+      ..color = gridColor // Use grid color for consistency
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1;
 
-    // Tooltip content
+    // Tooltip content - formatted like trading apps
     final tooltipText = '''
-Time: ${hoveredCandle!.time.month}/${hoveredCandle!.time.day}/${hoveredCandle!.time.year}
-Open: \$${hoveredCandle!.open.toStringAsFixed(2)}
-High: \$${hoveredCandle!.high.toStringAsFixed(2)}
-Low: \$${hoveredCandle!.low.toStringAsFixed(2)}
-Close: \$${hoveredCandle!.close.toStringAsFixed(2)}
-Volume: ${hoveredCandle!.volume.toStringAsFixed(0)}
+Time: ${hoveredCandle!.time.day}/${hoveredCandle!.time.month}/${hoveredCandle!.time.year}
+O: ${hoveredCandle!.open.toStringAsFixed(3)}
+H: ${hoveredCandle!.high.toStringAsFixed(3)}
+L: ${hoveredCandle!.low.toStringAsFixed(3)}
+C: ${hoveredCandle!.close.toStringAsFixed(3)}
+Vol: ${hoveredCandle!.volume.toStringAsFixed(0)}
 ''';
 
     textPainter.text = TextSpan(
       text: tooltipText,
-      style: const TextStyle(color: Colors.white, fontSize: 12),
+      style: TextStyle(
+        color: textColor, // Use theme text color
+        fontSize: 11,
+        fontWeight: FontWeight.w500,
+        fontFamily: 'monospace', // Monospace for better alignment
+      ),
     );
     textPainter.layout();
 
     // Position tooltip
-    const padding = 8.0;
+    const padding = 10.0;
     final tooltipWidth = textPainter.width + padding * 2;
     final tooltipHeight = textPainter.height + padding * 2;
 
-    double tooltipX = hoverPosition!.dx + 10;
-    double tooltipY = hoverPosition!.dy - tooltipHeight - 10;
+    double tooltipX = hoverPosition!.dx + 15;
+    double tooltipY = hoverPosition!.dy - tooltipHeight - 15;
 
     // Adjust position if tooltip goes off screen
     if (tooltipX + tooltipWidth > size.width) {
-      tooltipX = hoverPosition!.dx - tooltipWidth - 10;
+      tooltipX = hoverPosition!.dx - tooltipWidth - 15;
     }
     if (tooltipY < 0) {
-      tooltipY = hoverPosition!.dy + 10;
+      tooltipY = hoverPosition!.dy + 15;
     }
 
-    // Draw tooltip background
-    final tooltipRect =
-        Rect.fromLTWH(tooltipX, tooltipY, tooltipWidth, tooltipHeight);
+    // Draw tooltip background with shadow effect
+    final shadowRect = Rect.fromLTWH(tooltipX + 2, tooltipY + 2, tooltipWidth, tooltipHeight);
     canvas.drawRRect(
-      RRect.fromRectAndRadius(tooltipRect, const Radius.circular(4)),
+      RRect.fromRectAndRadius(shadowRect, const Radius.circular(6)),
+      Paint()..color = Colors.black.withOpacity(0.3),
+    );
+
+    final tooltipRect = Rect.fromLTWH(tooltipX, tooltipY, tooltipWidth, tooltipHeight);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(tooltipRect, const Radius.circular(6)),
       tooltipPaint,
     );
     canvas.drawRRect(
-      RRect.fromRectAndRadius(tooltipRect, const Radius.circular(4)),
+      RRect.fromRectAndRadius(tooltipRect, const Radius.circular(6)),
       borderPaint,
     );
 
