@@ -18,12 +18,20 @@ class _StockChartDemoState extends State<StockChartDemo> {
   String? _errorMessage;
   Map<String, dynamic>? _metadata;
   
+  // Trading controls state
+  double _lotSize = 0.01;
+  final List<double> _lotSizes = [0.01, 0.05, 0.10, 0.25, 0.50, 1.0];
+  
   // Scroll functionality state
   bool _isLoadingPast = false;
   bool _isLoadingFuture = false;
   int _currentStartIndex = 0;
   int _currentEndIndex = 1000;
   List<CandleStick>? _allData; // Keep reference to all data
+
+  // Backtesting state
+  bool _isBacktesting = false;
+  bool _isPlaying = false;
 
   @override
   void initState() {
@@ -133,6 +141,107 @@ class _StockChartDemoState extends State<StockChartDemo> {
     }
   }
 
+  /// Handle buy action
+  void _onBuy() {
+    // TODO: Implement buy logic
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Buy order placed: $_lotSize lots'),
+        backgroundColor: Colors.green,
+      ),
+    );
+  }
+
+  /// Handle sell action
+  void _onSell() {
+    // TODO: Implement sell logic
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Sell order placed: $_lotSize lots'),
+        backgroundColor: Colors.red,
+      ),
+    );
+  }
+
+  /// Show indicator selection dialog
+  void _showIndicatorSelection() {
+    // TODO: Implement indicator selection
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Select Indicators'),
+          content: const Text('Indicator selection coming soon...'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Show timeframe selection dialog
+  void _showTimeframeSelection() {
+    // TODO: Implement timeframe selection
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Select Timeframe'),
+          content: const Text('Timeframe selection coming soon...'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Handle back button for backtesting
+  void _onBacktestBack() {
+    // TODO: Implement back functionality for backtesting
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Back: Previous step'),
+        backgroundColor: Colors.blue,
+        duration: Duration(seconds: 1),
+      ),
+    );
+  }
+
+  /// Handle play/pause button for backtesting
+  void _onBacktestPlayPause() {
+    setState(() {
+      _isPlaying = !_isPlaying;
+    });
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(_isPlaying ? 'Backtesting: Playing' : 'Backtesting: Paused'),
+        backgroundColor: _isPlaying ? Colors.green : Colors.orange,
+        duration: const Duration(seconds: 1),
+      ),
+    );
+  }
+
+  /// Handle next button for backtesting
+  void _onBacktestNext() {
+    // TODO: Implement next functionality for backtesting
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Next: Forward step'),
+        backgroundColor: Colors.blue,
+        duration: Duration(seconds: 1),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -145,8 +254,21 @@ class _StockChartDemoState extends State<StockChartDemo> {
         elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadXAUUSDData,
+            icon: const Icon(Icons.timeline),
+            onPressed: _showIndicatorSelection,
+            tooltip: 'Indicators',
+          ),
+          IconButton(
+            icon: const Icon(Icons.access_time),
+            onPressed: _showTimeframeSelection,
+            tooltip: 'Timeframe',
+          ),
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () {
+              // TODO: Add general settings
+            },
+            tooltip: 'Settings',
           ),
         ],
       ),
@@ -154,66 +276,14 @@ class _StockChartDemoState extends State<StockChartDemo> {
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              _metadata != null
-                  ? '${_metadata!['symbol']} (${_metadata!['description']})'
-                  : 'XAUUSD Chart',
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Text(
-                  _metadata != null
-                      ? 'Period: ${_metadata!['period']}M | Bars: ${_xauusdData?.length ?? 0} | Currency: ${_metadata!['baseCurrency']}'
-                      : 'Loading XAUUSD data...',
-                  style: const TextStyle(color: Colors.grey),
-                ),
-                const Spacer(),
-                if (_isLoadingPast || _isLoadingFuture)
-                  Row(
-                    children: [
-                      const SizedBox(
-                        width: 12,
-                        height: 12,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.greenAccent,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        _isLoadingPast ? 'Loading Past...' : 'Loading Future...',
-                        style: const TextStyle(color: Colors.greenAccent, fontSize: 12),
-                      ),
-                    ],
-                  ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            // Instructions for scrolling
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.grey[800],
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: const Text(
-                'Pan horizontally to scroll through time • Pinch to zoom • Double tap to reset',
-                style: TextStyle(color: Colors.grey, fontSize: 12),
-                textAlign: TextAlign.center,
-              ),
-            ),
-            const SizedBox(height: 16),
             Expanded(
               child: _buildChart(),
             ),
+            const SizedBox(height: 16),
+            _buildBacktestingControls(),
+            const SizedBox(height: 12),
+            _buildTradingControls(),
           ],
         ),
       ),
@@ -300,6 +370,244 @@ class _StockChartDemoState extends State<StockChartDemo> {
         labelTextStyle: const TextStyle(color: Colors.white, fontSize: 10),
         onLoadPastData: _onLoadPastData,
         onLoadFutureData: _onLoadFutureData,
+      ),
+    );
+  }
+
+  Widget _buildTradingControls() {
+    // Get current price from the latest candle
+    final currentPrice = _xauusdData?.isNotEmpty == true ? _xauusdData!.last.close : 0.0;
+    final sellPrice = currentPrice - 0.05; // Bid price (slightly lower)
+    final buyPrice = currentPrice + 0.05;  // Ask price (slightly higher)
+
+    return Container(
+      height: 48,
+      margin: const EdgeInsets.symmetric(horizontal: 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            flex: 3,
+            child: GestureDetector(
+              onTap: _onSell,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.red[600],
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.3),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text(
+                      'SELL',
+                      style: TextStyle(
+                        color: Colors.redAccent,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      sellPrice.toStringAsFixed(2),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 18),
+          Expanded(
+            flex: 2,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.grey[850],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey[600]!, width: 1),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.3),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<double>(
+                  value: _lotSize,
+                  isExpanded: true,
+                  dropdownColor: Colors.grey[800],
+                  icon: Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: Icon(Icons.expand_more, color: Colors.grey[400], size: 18),
+                  ),
+                  style: const TextStyle(color: Colors.white),
+                  selectedItemBuilder: (BuildContext context) {
+                    return _lotSizes.map<Widget>((double value) {
+                      return Container(
+                        width: double.infinity,
+                        alignment: Alignment.center,
+                        child: Text(
+                          value.toString(),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      );
+                    }).toList();
+                  },
+                  onChanged: (double? newValue) {
+                    if (newValue != null) {
+                      setState(() {
+                        _lotSize = newValue;
+                      });
+                    }
+                  },
+                  items: _lotSizes.map<DropdownMenuItem<double>>((double value) {
+                    return DropdownMenuItem<double>(
+                      value: value,
+                      child: Center(
+                        child: Text(
+                          value.toString(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 18),
+          Expanded(
+            flex: 3,
+            child: GestureDetector(
+              onTap: _onBuy,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.green[600],
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.3),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text(
+                      'BUY',
+                      style: TextStyle(
+                        color: Colors.greenAccent,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      buyPrice.toStringAsFixed(2),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBacktestingControls() {
+    return Container(
+      height: 50,
+      margin: const EdgeInsets.symmetric(horizontal: 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          // Back Button
+          Expanded(
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              child: ElevatedButton(
+                onPressed: _onBacktestBack,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue[600],
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: const Icon(Icons.skip_previous, size: 24),
+              ),
+            ),
+          ),
+          // Play/Pause Button
+          Expanded(
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              child: ElevatedButton(
+                onPressed: _onBacktestPlayPause,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _isPlaying ? Colors.orange[600] : Colors.green[600],
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: Icon(
+                  _isPlaying ? Icons.pause : Icons.play_arrow, 
+                  size: 24,
+                ),
+              ),
+            ),
+          ),
+          // Next Button
+          Expanded(
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              child: ElevatedButton(
+                onPressed: _onBacktestNext,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue[600],
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: const Icon(Icons.skip_next, size: 24),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
