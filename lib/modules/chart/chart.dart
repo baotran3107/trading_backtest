@@ -100,15 +100,18 @@ class _StockChartState extends State<StockChart> {
   Widget _buildChart(double chartWidth) {
     return Consumer<ChartProvider>(
       builder: (context, chartProvider, child) {
+        // Calculate effective chart width (reserve space for price labels)
+        final effectiveChartWidth = chartWidth - (widget.showPriceLabels ? 80.0 : 0.0);
+        
         // Calculate actual candle width based on time scale
         final scaledDimensions = chartProvider.getScaledDimensions(widget.candleWidth, widget.candleSpacing);
         final baseCandleWidth = scaledDimensions['candleWidth']!;
         final baseCandleSpacing = scaledDimensions['candleSpacing']!;
 
-        // Get the visible candles using the provider
+        // Get the visible candles using the provider with effective width
         final visibleCandles = chartProvider.getVisibleCandles(
           widget.candles,
-          chartWidth,
+          effectiveChartWidth, // Use effective width instead of full width
           widget.candleWidth,
           widget.candleSpacing,
         );
@@ -123,11 +126,12 @@ class _StockChartState extends State<StockChart> {
             // This is a pan gesture, handle horizontal scrolling
             final layoutBuilder = context.findRenderObject() as RenderBox?;
             if (layoutBuilder != null) {
-              final chartWidth = layoutBuilder.size.width;
+              final fullChartWidth = layoutBuilder.size.width;
+              final effectiveChartWidth = fullChartWidth - (widget.showPriceLabels ? 80.0 : 0.0);
               chartProvider.updateScrollOffset(
                 details.focalPointDelta.dx,
                 widget.candles.length,
-                chartWidth,
+                effectiveChartWidth, // Use effective width for scroll calculations
                 widget.candleWidth,
                 widget.candleSpacing,
               );
@@ -373,25 +377,30 @@ class StockChartPainter extends CustomPainter {
     // Calculate price range
     final priceData = _calculatePriceRange();
 
-    // Use full height for price chart since volume is removed
-    final priceChartHeight = size.height;
+    // Reserve space for price labels on the right and time labels at bottom
+    final priceLabelsWidth = showPriceLabels ? 80.0 : 0.0;
+    final timeLabelsHeight = showTimeLabels ? 30.0 : 0.0;
+    
+    // Calculate effective chart dimensions
+    final effectiveChartWidth = size.width - priceLabelsWidth;
+    final effectiveChartHeight = size.height - timeLabelsHeight;
 
-    // Draw candlesticks first (behind other elements)
-    _drawCandlesticks(canvas, priceData, priceChartHeight);
+    // Draw candlesticks first (behind other elements) in the reserved area
+    _drawCandlesticks(canvas, priceData, effectiveChartHeight, effectiveChartWidth);
 
     // Draw grid
     if (showGrid) {
-      _drawGrid(canvas, size, priceChartHeight);
+      _drawGrid(canvas, size, effectiveChartHeight, effectiveChartWidth);
     }
 
     // Draw price labels (on top of candlesticks)
     if (showPriceLabels) {
-      _drawPriceLabels(canvas, size, priceData, priceChartHeight);
+      _drawPriceLabels(canvas, size, priceData, effectiveChartHeight);
     }
 
     // Draw time labels (on top of candlesticks)
     if (showTimeLabels) {
-      _drawTimeLabels(canvas, size);
+      _drawTimeLabels(canvas, size, effectiveChartWidth);
     }
 
     // Draw hover tooltip (on top of everything)
@@ -419,9 +428,6 @@ class StockChartPainter extends CustomPainter {
     // Apply price scaling with intelligent bounds
     final center = (paddedMinPrice + paddedMaxPrice) / 2;
 
-    // Calculate the scaled range, ensuring it doesn't create content overflow
-    // When priceScale > 1.0 (zooming in), we compress the visible range
-    // When priceScale < 1.0 (zooming out), we expand the visible range
     final scaledRange = paddedRange / priceScale;
 
     // Allow much smaller visible range for better zoom out capability
@@ -439,7 +445,7 @@ class StockChartPainter extends CustomPainter {
     };
   }
 
-  void _drawGrid(Canvas canvas, Size size, double priceChartHeight) {
+  void _drawGrid(Canvas canvas, Size size, double priceChartHeight, double effectiveChartWidth) {
     final gridPaint = Paint()
       ..color = gridColor
       ..strokeWidth = 1.0 // Increased for better visibility
@@ -451,7 +457,7 @@ class StockChartPainter extends CustomPainter {
       final y = (priceChartHeight / priceGridLines) * i;
       canvas.drawLine(
         Offset(0, y),
-        Offset(size.width, y),
+        Offset(effectiveChartWidth, y), // Use effective width instead of full width
         gridPaint,
       );
     }
@@ -460,11 +466,11 @@ class StockChartPainter extends CustomPainter {
     final effectiveCandleWidth = (candleWidth + candleSpacing) * timeScale;
     final gridSpacing = effectiveCandleWidth * 8; // More consistent spacing
     
-    // Ensure we have at least some vertical lines
-    final minGridSpacing = size.width / 10;
-    final actualGridSpacing = gridSpacing.clamp(minGridSpacing, size.width / 4);
+    // Ensure we have at least some vertical lines based on effective width
+    final minGridSpacing = effectiveChartWidth / 10;
+    final actualGridSpacing = gridSpacing.clamp(minGridSpacing, effectiveChartWidth / 4);
     
-    for (double x = 0; x <= size.width; x += actualGridSpacing) {
+    for (double x = 0; x <= effectiveChartWidth; x += actualGridSpacing) {
       canvas.drawLine(
         Offset(x, 0),
         Offset(x, size.height),
@@ -493,35 +499,52 @@ class StockChartPainter extends CustomPainter {
       );
       textPainter.layout();
 
-      // Position labels on the right side of the chart with dark background
-      final rightX = size.width - textPainter.width - 8;
+      // Position labels in the reserved right area
+      final rightX = size.width - 75; // Position within the reserved 80px area
 
-      // Draw semi-transparent background for better readability while showing candles behind
+      // Draw solid background for better readability - no more transparency issues
       final rect = Rect.fromLTWH(
         rightX - 4,
         y - textPainter.height / 2 - 2,
         textPainter.width + 8,
         textPainter.height + 4,
       );
+      
+      // Use a solid background for clear visibility
       canvas.drawRect(
         rect,
-        Paint()..color = const Color(0xFF2B3139).withOpacity(0.6), // More transparent to show candles behind
+        Paint()..color = const Color(0xFF2B3139), // Solid background - no transparency
       );
 
-      // Draw border around price label
+      // Draw border around price label for better definition
       canvas.drawRect(
         rect,
         Paint()
-          ..color = gridColor.withOpacity(0.8)
+          ..color = gridColor.withOpacity(0.9)
           ..style = PaintingStyle.stroke
-          ..strokeWidth = 0.5,
+          ..strokeWidth = 0.8,
+      );
+
+      // Add a subtle shadow effect for depth
+      canvas.drawRect(
+        Rect.fromLTWH(rect.left + 1, rect.top + 1, rect.width, rect.height),
+        Paint()..color = Colors.black.withOpacity(0.1),
       );
 
       textPainter.paint(canvas, Offset(rightX, y - textPainter.height / 2));
     }
+    
+    // Draw a vertical separator line between chart and price labels for better visual separation
+    canvas.drawLine(
+      Offset(size.width - 80, 0),
+      Offset(size.width - 80, chartHeight),
+      Paint()
+        ..color = gridColor.withOpacity(0.6)
+        ..strokeWidth = 1.0,
+    );
   }
 
-  void _drawTimeLabels(Canvas canvas, Size size) {
+  void _drawTimeLabels(Canvas canvas, Size size, double effectiveChartWidth) {
     final textPainter = TextPainter(textDirection: TextDirection.ltr);
 
     // Show time labels for visible candles based on their actual spacing
@@ -530,6 +553,10 @@ class StockChartPainter extends CustomPainter {
     for (int i = 0; i < candles.length; i += labelStep) {
       // Position time labels based on actual candle positions
       final x = i * (candleWidth + candleSpacing) + candleWidth / 2;
+      
+      // Only draw labels that are within the effective chart area
+      if (x > effectiveChartWidth) break;
+      
       final time = candles[i].time;
 
       textPainter.text = TextSpan(
@@ -551,7 +578,7 @@ class StockChartPainter extends CustomPainter {
       );
       canvas.drawRect(
         rect,
-        Paint()..color = const Color(0xFF2B3139).withOpacity(0.6), // More transparent to show candles behind
+        Paint()..color = const Color(0xFF2B3139).withOpacity(0.8), // Slightly less transparent for better readability
       );
 
       // Draw border
@@ -572,21 +599,24 @@ class StockChartPainter extends CustomPainter {
   }
 
   void _drawCandlesticks(
-      Canvas canvas, Map<String, double> priceData, double chartHeight) {
-    // Position candles using their actual scaled widths
+      Canvas canvas, Map<String, double> priceData, double chartHeight, double effectiveChartWidth) {
+    // Position candles using their actual scaled widths within the effective chart area
     for (int i = 0; i < candles.length; i++) {
       final candle = candles[i];
-      // Position candles based on actual width and spacing
+      // Position candles based on actual width and spacing, constrained to effective width
       final x = i * (candleWidth + candleSpacing) + candleWidth / 2;
-
-      _drawSingleCandle(
-        canvas,
-        candle,
-        x,
-        chartHeight,
-        priceData['min']!,
-        priceData['range']!,
-      );
+      
+      // Only draw candles that are within the effective chart area
+      if (x <= effectiveChartWidth) {
+        _drawSingleCandle(
+          canvas,
+          candle,
+          x,
+          chartHeight,
+          priceData['min']!,
+          priceData['range']!,
+        );
+      }
     }
   }
 

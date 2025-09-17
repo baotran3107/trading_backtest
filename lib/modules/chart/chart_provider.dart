@@ -1,35 +1,27 @@
 import 'package:flutter/material.dart';
 import '../../model/candle_model.dart';
 
-/// Provider class to manage chart state and interactions
 class ChartProvider extends ChangeNotifier {
-  // Hover state
   CandleStick? _hoveredCandle;
   Offset? _hoverPosition;
 
-  // Scaling factors for candles
-  double _timeScale = 1.0; // X-axis scaling (candle width and spacing)
-  double _priceScale =
-      1.0; // Y-axis scaling (price range compression/expansion)
+  double _timeScale = 1.0;
+  double _priceScale = 1.0;
 
-  // Scale constraints
   static const double _minTimeScale = 0.3;
   static const double _maxTimeScale = 3.0;
-  static const double _minPriceScale = 0.5;
+  static const double _minPriceScale = 0.1;
   static const double _maxPriceScale = 2.0;
 
-  // Gesture state
   double _baseFocalPointX = 0.0;
   double _baseFocalPointY = 0.0;
 
-  // Scroll state for navigating through time
-  double _scrollOffset = 0.0; // Horizontal scroll offset in pixels
-  int _visibleStartIndex = 0; // Start index of currently visible data
-  int _visibleEndIndex = 0; // End index of currently visible data
+  double _scrollOffset = 0.0;
+  int _visibleStartIndex = 0;
+  int _visibleEndIndex = 0;
   bool _isScrollingToPast = false;
   bool _isScrollingToFuture = false;
 
-  // Getters
   CandleStick? get hoveredCandle => _hoveredCandle;
   Offset? get hoverPosition => _hoverPosition;
   double get timeScale => _timeScale;
@@ -44,7 +36,6 @@ class ChartProvider extends ChangeNotifier {
   bool get isScrollingToPast => _isScrollingToPast;
   bool get isScrollingToFuture => _isScrollingToFuture;
 
-  /// Set hover state for candle
   void setHover(CandleStick? candle, Offset? position) {
     if (_hoveredCandle != candle || _hoverPosition != position) {
       _hoveredCandle = candle;
@@ -53,7 +44,6 @@ class ChartProvider extends ChangeNotifier {
     }
   }
 
-  /// Clear hover state
   void clearHover() {
     if (_hoveredCandle != null || _hoverPosition != null) {
       _hoveredCandle = null;
@@ -62,13 +52,11 @@ class ChartProvider extends ChangeNotifier {
     }
   }
 
-  /// Start scale gesture
   void startScale(double focalPointX, double focalPointY) {
     _baseFocalPointX = focalPointX;
     _baseFocalPointY = focalPointY;
   }
 
-  /// Update scale based on gesture
   void updateScale(double scale, double focalPointX, double focalPointY) {
     if (scale == 1.0) return;
 
@@ -77,7 +65,6 @@ class ChartProvider extends ChangeNotifier {
     final deltaY = (focalPointY - _baseFocalPointY).abs();
 
     if (deltaX > deltaY) {
-      // Primarily horizontal gesture - adjust time scale
       final newTimeScale =
           (_timeScale * scale).clamp(_minTimeScale, _maxTimeScale);
       if (newTimeScale != _timeScale) {
@@ -85,7 +72,6 @@ class ChartProvider extends ChangeNotifier {
         shouldNotify = true;
       }
     } else {
-      // Primarily vertical gesture - adjust price scale
       final newPriceScale =
           (_priceScale * scale).clamp(_minPriceScale, _maxPriceScale);
       if (newPriceScale != _priceScale) {
@@ -99,9 +85,8 @@ class ChartProvider extends ChangeNotifier {
     }
   }
 
-  /// Update price scale based on vertical pan
   void updatePriceScaleFromPan(double deltaY) {
-    final scaleFactor = 1.0 - (deltaY * 0.01); // Adjust sensitivity
+    final scaleFactor = 1.0 - (deltaY * 0.01);
     final newPriceScale =
         (_priceScale * scaleFactor).clamp(_minPriceScale, _maxPriceScale);
 
@@ -111,9 +96,8 @@ class ChartProvider extends ChangeNotifier {
     }
   }
 
-  /// Update time scale based on horizontal pan
   void updateTimeScaleFromPan(double deltaX) {
-    final scaleFactor = 1.0 + (deltaX * 0.01); // Adjust sensitivity
+    final scaleFactor = 1.0 + (deltaX * 0.01);
     final newTimeScale =
         (_timeScale * scaleFactor).clamp(_minTimeScale, _maxTimeScale);
 
@@ -123,7 +107,6 @@ class ChartProvider extends ChangeNotifier {
     }
   }
 
-  /// Reset all scaling to default values
   void resetScaling() {
     if (_timeScale != 1.0 || _priceScale != 1.0) {
       _timeScale = 1.0;
@@ -132,38 +115,32 @@ class ChartProvider extends ChangeNotifier {
     }
   }
 
-  /// Handle horizontal scroll for time navigation
   void updateScrollOffset(double deltaX, int totalDataLength, double chartWidth, double candleWidth, double candleSpacing) {
     final baseCandleWidth = candleWidth * _timeScale;
     final baseCandleSpacing = candleSpacing * _timeScale;
     final candleUnitWidth = baseCandleWidth + baseCandleSpacing;
     
-    // Calculate maximum scroll offset based on data length
     final maxVisibleCandles = (chartWidth / candleUnitWidth).floor();
     final maxScrollOffset = (totalDataLength - maxVisibleCandles) * candleUnitWidth;
     
-    // Update scroll offset with bounds checking
     final newScrollOffset = (_scrollOffset - deltaX).clamp(0.0, maxScrollOffset.toDouble());
     
     if (newScrollOffset != _scrollOffset) {
       _scrollOffset = newScrollOffset;
       
-      // Update visible data indices
       final startIndex = (_scrollOffset / candleUnitWidth).floor();
       final endIndex = (startIndex + maxVisibleCandles).clamp(0, totalDataLength);
       
       _visibleStartIndex = startIndex;
       _visibleEndIndex = endIndex;
       
-      // Check if we're scrolling to boundaries for data loading
-      _isScrollingToPast = startIndex <= 5; // Near the beginning
-      _isScrollingToFuture = endIndex >= totalDataLength - 5; // Near the end
+      _isScrollingToPast = startIndex <= 5;
+      _isScrollingToFuture = endIndex >= totalDataLength - 5;
       
       notifyListeners();
     }
   }
 
-  /// Reset scroll position to center
   void resetScroll(int totalDataLength, double chartWidth, double candleWidth, double candleSpacing) {
     final baseCandleWidth = candleWidth * _timeScale;
     final baseCandleSpacing = candleSpacing * _timeScale;
@@ -181,7 +158,6 @@ class ChartProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Set scroll position to a specific time/index
   void scrollToIndex(int targetIndex, int totalDataLength, double chartWidth, double candleWidth, double candleSpacing) {
     final baseCandleWidth = candleWidth * _timeScale;
     final baseCandleSpacing = candleSpacing * _timeScale;
@@ -197,7 +173,6 @@ class ChartProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Get visible candles based on current scaling, scroll offset and chart width
   List<CandleStick> getVisibleCandles(
     List<CandleStick> allCandles,
     double chartWidth,
@@ -210,27 +185,22 @@ class ChartProvider extends ChangeNotifier {
     final baseCandleSpacing = candleSpacing * _timeScale;
     final candleUnitWidth = baseCandleWidth + baseCandleSpacing;
 
-    // Calculate how many candles can fit in the chart width
     final maxVisibleCandles = (chartWidth / candleUnitWidth).floor();
     final totalCandles = allCandles.length;
     
-    // Use scroll offset to determine visible range
     int startIndex;
     int endIndex;
     
     if (_scrollOffset == 0.0 && _visibleStartIndex == 0 && _visibleEndIndex == 0) {
-      // Initial state - center the view
       final visibleCandleCount = maxVisibleCandles.clamp(1, totalCandles);
       startIndex = ((totalCandles - visibleCandleCount) / 2)
           .floor()
           .clamp(0, totalCandles - visibleCandleCount);
       endIndex = (startIndex + visibleCandleCount).clamp(0, totalCandles);
       
-      // Update internal state
       _visibleStartIndex = startIndex;
       _visibleEndIndex = endIndex;
     } else {
-      // Use current scroll position
       startIndex = _visibleStartIndex;
       endIndex = _visibleEndIndex;
     }
@@ -238,7 +208,6 @@ class ChartProvider extends ChangeNotifier {
     return allCandles.sublist(startIndex, endIndex);
   }
 
-  /// Get scaled candle dimensions
   Map<String, double> getScaledDimensions(
       double candleWidth, double candleSpacing) {
     return {
@@ -247,7 +216,6 @@ class ChartProvider extends ChangeNotifier {
     };
   }
 
-  /// Calculate which candle is being hovered/tapped
   CandleStick? getCandleAtPosition(
     List<CandleStick> allCandles,
     double localX,
