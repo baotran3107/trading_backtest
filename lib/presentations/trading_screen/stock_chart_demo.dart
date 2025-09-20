@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import '../../modules/chart/chart.dart';
 import '../../model/candle_model.dart';
 import '../../repository/trading_data_repository.dart';
+import 'widgets/trading_controls.dart';
+import 'widgets/backtesting_controls.dart';
+import 'widgets/price_display_panel.dart';
+import 'widgets/state_widgets.dart';
 
 /// Demo page showing how to use the StockChart widget with XAUUSD data
 class StockChartDemo extends StatefulWidget {
@@ -17,6 +21,7 @@ class _StockChartDemoState extends State<StockChartDemo> {
   bool _isLoading = true;
   String? _errorMessage;
   Map<String, dynamic>? _metadata;
+  double? _previousPrice;
   
   // Trading controls state
   double _lotSize = 0.01;
@@ -65,6 +70,10 @@ class _StockChartDemoState extends State<StockChartDemo> {
       setState(() {
         _metadata = metadata;
         _allData = allData;
+        // Store previous price before updating
+        if (_xauusdData?.isNotEmpty == true) {
+          _previousPrice = _xauusdData!.last.close;
+        }
         _xauusdData = dataToShow;
         _isLoading = false;
       });
@@ -245,45 +254,168 @@ class _StockChartDemoState extends State<StockChartDemo> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_metadata != null
-            ? '${_metadata!['symbol']} - ${_metadata!['description']}'
-            : 'XAUUSD Chart'),
-        backgroundColor: Colors.grey[900],
-        foregroundColor: Colors.white,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.timeline),
-            onPressed: _showIndicatorSelection,
-            tooltip: 'Indicators',
+      appBar: _buildAppBar(),
+      backgroundColor: Colors.grey[900],
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          return _buildResponsiveLayout(constraints);
+        },
+      ),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      title: Text(_metadata != null
+          ? '${_metadata!['symbol']} - ${_metadata!['description']}'
+          : 'XAUUSD Chart'),
+      backgroundColor: Colors.grey[900],
+      foregroundColor: Colors.white,
+      elevation: 0,
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.timeline),
+          onPressed: _showIndicatorSelection,
+          tooltip: 'Indicators',
+        ),
+        IconButton(
+          icon: const Icon(Icons.access_time),
+          onPressed: _showTimeframeSelection,
+          tooltip: 'Timeframe',
+        ),
+        IconButton(
+          icon: const Icon(Icons.settings),
+          onPressed: () {
+            // TODO: Add general settings
+          },
+          tooltip: 'Settings',
+        ),
+      ],
+    );
+  }
+
+  Widget _buildResponsiveLayout(BoxConstraints constraints) {
+    final isPortrait = constraints.maxHeight > constraints.maxWidth;
+    final screenWidth = constraints.maxWidth;
+    
+    // Determine if we should use mobile or tablet/desktop layout
+    final isMobile = screenWidth < 600;
+    
+    if (isMobile && isPortrait) {
+      return _buildMobilePortraitLayout();
+    } else if (isMobile && !isPortrait) {
+      return _buildMobileLandscapeLayout();
+    } else {
+      return _buildTabletDesktopLayout(constraints);
+    }
+  }
+
+  Widget _buildMobilePortraitLayout() {
+    return SafeArea(
+      child: Column(
+        children: [
+          // Price display panel
+          _buildPricePanel(),
+          
+          // Chart takes most of the space
+          Expanded(
+            flex: 7,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: _buildChart(),
+            ),
           ),
-          IconButton(
-            icon: const Icon(Icons.access_time),
-            onPressed: _showTimeframeSelection,
-            tooltip: 'Timeframe',
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () {
-              // TODO: Add general settings
-            },
-            tooltip: 'Settings',
+          
+          // Controls at bottom
+          Expanded(
+            flex: 2,
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Column(
+                children: [
+                  Expanded(child: _buildBacktestingControlsWidget()),
+                  const SizedBox(height: 8),
+                  Expanded(child: _buildTradingControlsWidget()),
+                ],
+              ),
+            ),
           ),
         ],
       ),
-      backgroundColor: Colors.grey[900],
-      body: Padding(
+    );
+  }
+
+  Widget _buildMobileLandscapeLayout() {
+    return SafeArea(
+      child: Row(
+        children: [
+          // Chart takes most space on the left
+          Expanded(
+            flex: 7,
+            child: Column(
+              children: [
+                _buildPricePanel(),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: _buildChart(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // Controls on the right side
+          SizedBox(
+            width: 200,
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Column(
+                children: [
+                  Expanded(child: _buildBacktestingControlsWidget()),
+                  const SizedBox(height: 8),
+                  Expanded(child: _buildTradingControlsWidget()),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabletDesktopLayout(BoxConstraints constraints) {
+    return SafeArea(
+      child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
+            // Price panel
+            _buildPricePanel(),
+            
+            const SizedBox(height: 16),
+            
+            // Chart area
             Expanded(
               child: _buildChart(),
             ),
+            
             const SizedBox(height: 16),
-            _buildBacktestingControls(),
-            const SizedBox(height: 12),
-            _buildTradingControls(),
+            
+            // Controls row
+            Row(
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: _buildBacktestingControlsWidget(),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  flex: 3,
+                  child: _buildTradingControlsWidget(),
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -292,323 +424,100 @@ class _StockChartDemoState extends State<StockChartDemo> {
 
   Widget _buildChart() {
     if (_isLoading) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(color: Colors.greenAccent),
-            SizedBox(height: 16),
-            Text(
-              'Loading XAUUSD data...',
-              style: TextStyle(color: Colors.white),
-            ),
-          ],
-        ),
+      return const LoadingStateWidget(
+        message: 'Loading XAUUSD data...',
       );
     }
 
     if (_errorMessage != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.error_outline,
-              color: Colors.redAccent,
-              size: 48,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              _errorMessage!,
-              style: const TextStyle(color: Colors.redAccent),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _loadXAUUSDData,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.greenAccent,
-                foregroundColor: Colors.black,
-              ),
-              child: const Text('Retry'),
-            ),
-          ],
-        ),
+      return ErrorStateWidget(
+        errorMessage: _errorMessage!,
+        onRetry: _loadXAUUSDData,
       );
     }
 
     if (_xauusdData == null || _xauusdData!.isEmpty) {
-      return const Center(
-        child: Text(
-          'No data available',
-          style: TextStyle(color: Colors.white),
-        ),
+      return const EmptyStateWidget(
+        message: 'No trading data available',
+        icon: Icons.show_chart,
       );
     }
 
     return Container(
       decoration: BoxDecoration(
         border: Border.all(color: Colors.grey[700]!),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(12),
+        color: Colors.grey[900],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.3),
+            blurRadius: 6,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
-      child: StockChart(
-        candles: _xauusdData!,
-        height: 600, // Fixed height instead of double.infinity
-        candleWidth: 6,
-        candleSpacing: 1,
-        bullishColor: Colors.greenAccent,
-        bearishColor: Colors.redAccent,
-        backgroundColor: Colors.grey[900]!,
-        gridColor: Colors.grey[700]!,
-        textColor: Colors.white,
-        wickColor: Colors.grey[400]!,
-        showVolume: false, // Disabled volume
-        showGrid: true,
-        showPriceLabels: true,
-        showTimeLabels: true,
-        enableInteraction: true,
-        labelTextStyle: const TextStyle(color: Colors.white, fontSize: 10),
-        onLoadPastData: _onLoadPastData,
-        onLoadFutureData: _onLoadFutureData,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: StockChart(
+          candles: _xauusdData!,
+          height: double.infinity,
+          candleWidth: 6,
+          candleSpacing: 1,
+          bullishColor: Colors.greenAccent,
+          bearishColor: Colors.redAccent,
+          backgroundColor: Colors.grey[900]!,
+          gridColor: Colors.grey[700]!,
+          textColor: Colors.white,
+          wickColor: Colors.grey[400]!,
+          showVolume: false,
+          showGrid: true,
+          showPriceLabels: true,
+          showTimeLabels: true,
+          enableInteraction: true,
+          labelTextStyle: const TextStyle(color: Colors.white, fontSize: 10),
+          onLoadPastData: _onLoadPastData,
+          onLoadFutureData: _onLoadFutureData,
+        ),
       ),
     );
   }
 
-  Widget _buildTradingControls() {
-    // Get current price from the latest candle
+  Widget _buildPricePanel() {
+    final currentPrice = _xauusdData?.isNotEmpty == true ? _xauusdData!.last.close : null;
+    
+    return PriceDisplayPanel(
+      currentPrice: currentPrice,
+      previousPrice: _previousPrice,
+      symbol: _metadata?['symbol'] ?? 'XAUUSD',
+      description: _metadata?['description'],
+      isLoading: _isLoading,
+    );
+  }
+
+  Widget _buildTradingControlsWidget() {
     final currentPrice = _xauusdData?.isNotEmpty == true ? _xauusdData!.last.close : 0.0;
-    final sellPrice = currentPrice - 0.05; // Bid price (slightly lower)
-    final buyPrice = currentPrice + 0.05;  // Ask price (slightly higher)
-
-    return Container(
-      height: 48,
-      margin: const EdgeInsets.symmetric(horizontal: 12),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(
-            flex: 3,
-            child: GestureDetector(
-              onTap: _onSell,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.red[600],
-                  borderRadius: BorderRadius.circular(8),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.3),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text(
-                      'SELL',
-                      style: TextStyle(
-                        color: Colors.redAccent,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      sellPrice.toStringAsFixed(2),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 18),
-          Expanded(
-            flex: 2,
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.grey[850],
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey[600]!, width: 1),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.3),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<double>(
-                  value: _lotSize,
-                  isExpanded: true,
-                  dropdownColor: Colors.grey[800],
-                  icon: Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: Icon(Icons.expand_more, color: Colors.grey[400], size: 18),
-                  ),
-                  style: const TextStyle(color: Colors.white),
-                  selectedItemBuilder: (BuildContext context) {
-                    return _lotSizes.map<Widget>((double value) {
-                      return Container(
-                        width: double.infinity,
-                        alignment: Alignment.center,
-                        child: Text(
-                          value.toString(),
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      );
-                    }).toList();
-                  },
-                  onChanged: (double? newValue) {
-                    if (newValue != null) {
-                      setState(() {
-                        _lotSize = newValue;
-                      });
-                    }
-                  },
-                  items: _lotSizes.map<DropdownMenuItem<double>>((double value) {
-                    return DropdownMenuItem<double>(
-                      value: value,
-                      child: Center(
-                        child: Text(
-                          value.toString(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 18),
-          Expanded(
-            flex: 3,
-            child: GestureDetector(
-              onTap: _onBuy,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.green[600],
-                  borderRadius: BorderRadius.circular(8),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.3),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text(
-                      'BUY',
-                      style: TextStyle(
-                        color: Colors.greenAccent,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      buyPrice.toStringAsFixed(2),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+    
+    return TradingControls(
+      currentPrice: currentPrice,
+      lotSize: _lotSize,
+      availableLotSizes: _lotSizes,
+      onBuy: _onBuy,
+      onSell: _onSell,
+      onLotSizeChanged: (newSize) {
+        setState(() {
+          _lotSize = newSize;
+        });
+      },
     );
   }
 
-  Widget _buildBacktestingControls() {
-    return Container(
-      height: 50,
-      margin: const EdgeInsets.symmetric(horizontal: 12),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          // Back Button
-          Expanded(
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              child: ElevatedButton(
-                onPressed: _onBacktestBack,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue[600],
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: const Icon(Icons.skip_previous, size: 24),
-              ),
-            ),
-          ),
-          // Play/Pause Button
-          Expanded(
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              child: ElevatedButton(
-                onPressed: _onBacktestPlayPause,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _isPlaying ? Colors.orange[600] : Colors.green[600],
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: Icon(
-                  _isPlaying ? Icons.pause : Icons.play_arrow, 
-                  size: 24,
-                ),
-              ),
-            ),
-          ),
-          // Next Button
-          Expanded(
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              child: ElevatedButton(
-                onPressed: _onBacktestNext,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue[600],
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: const Icon(Icons.skip_next, size: 24),
-              ),
-            ),
-          ),
-        ],
-      ),
+  Widget _buildBacktestingControlsWidget() {
+    return BacktestingControls(
+      isPlaying: _isPlaying,
+      onBack: _onBacktestBack,
+      onPlayPause: _onBacktestPlayPause,
+      onNext: _onBacktestNext,
     );
   }
+
 }
