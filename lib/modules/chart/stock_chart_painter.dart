@@ -1,0 +1,469 @@
+import 'package:flutter/material.dart';
+import '../../model/candle_model.dart';
+import 'chart_constants.dart';
+
+/// Custom painter for the stock chart
+class StockChartPainter extends CustomPainter {
+  final List<CandleStick> candles;
+  final double candleWidth;
+  final double candleSpacing;
+  final double timeScale;
+  final double priceScale;
+  final double chartWidth;
+  final Color bullishColor;
+  final Color bearishColor;
+  final Color dojiColor;
+  final Color wickColor;
+  final Color gridColor;
+  final Color textColor;
+  final bool showGrid;
+  final bool showVolume;
+  final bool showPriceLabels;
+  final bool showTimeLabels;
+  final double volumeHeightRatio;
+  final TextStyle labelTextStyle;
+  final CandleStick? hoveredCandle;
+  final Offset? hoverPosition;
+
+  StockChartPainter({
+    required this.candles,
+    required this.candleWidth,
+    required this.candleSpacing,
+    required this.timeScale,
+    required this.priceScale,
+    required this.chartWidth,
+    required this.bullishColor,
+    required this.bearishColor,
+    required this.dojiColor,
+    required this.wickColor,
+    required this.gridColor,
+    required this.textColor,
+    required this.showGrid,
+    required this.showVolume,
+    required this.showPriceLabels,
+    required this.showTimeLabels,
+    required this.volumeHeightRatio,
+    required this.labelTextStyle,
+    this.hoveredCandle,
+    this.hoverPosition,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (candles.isEmpty) return;
+
+    // Calculate price range
+    final priceData = _calculatePriceRange();
+
+    // Reserve space for price labels on the right and time labels at bottom
+    final priceLabelsWidth =
+        showPriceLabels ? ChartConstants.priceLabelsWidth : 0.0;
+    final timeLabelsHeight =
+        showTimeLabels ? ChartConstants.timeLabelsHeight : 0.0;
+
+    // Calculate effective chart dimensions
+    final effectiveChartWidth = size.width - priceLabelsWidth;
+    final effectiveChartHeight = size.height - timeLabelsHeight;
+
+    // Draw candlesticks first (behind other elements) in the reserved area
+    _drawCandlesticks(
+        canvas, priceData, effectiveChartHeight, effectiveChartWidth);
+
+    // Draw grid
+    if (showGrid) {
+      _drawGrid(canvas, size, effectiveChartHeight, effectiveChartWidth);
+    }
+
+    // Draw price labels (on top of candlesticks)
+    if (showPriceLabels) {
+      _drawPriceLabels(canvas, size, priceData, effectiveChartHeight);
+    }
+
+    // Draw time labels (on top of candlesticks)
+    if (showTimeLabels) {
+      _drawTimeLabels(canvas, size, effectiveChartWidth);
+    }
+
+    // Draw hover tooltip (on top of everything)
+    if (hoveredCandle != null && hoverPosition != null) {
+      _drawHoverTooltip(canvas, size);
+    }
+  }
+
+  Map<String, double> _calculatePriceRange() {
+    double minPrice = candles.first.low;
+    double maxPrice = candles.first.high;
+
+    for (final candle in candles) {
+      if (candle.low < minPrice) minPrice = candle.low;
+      if (candle.high > maxPrice) maxPrice = candle.high;
+    }
+
+    // Add base padding
+    final baseRange = maxPrice - minPrice;
+    final basePadding = baseRange * ChartConstants.basePadding;
+    final paddedMinPrice = minPrice - basePadding;
+    final paddedMaxPrice = maxPrice + basePadding;
+    final paddedRange = paddedMaxPrice - paddedMinPrice;
+
+    // Apply price scaling with intelligent bounds
+    final center = (paddedMinPrice + paddedMaxPrice) / 2;
+    final scaledRange = paddedRange / priceScale;
+
+    // Allow much smaller visible range for better zoom out capability
+    final minVisibleRange = baseRange * ChartConstants.minVisibleRange;
+    final constrainedRange = scaledRange.clamp(
+        minVisibleRange, paddedRange * ChartConstants.maxVisibleRange);
+
+    final scaledMinPrice = center - (constrainedRange / 2);
+    final scaledMaxPrice = center + (constrainedRange / 2);
+
+    return {
+      'min': scaledMinPrice,
+      'max': scaledMaxPrice,
+      'range': constrainedRange,
+    };
+  }
+
+  void _drawGrid(Canvas canvas, Size size, double priceChartHeight,
+      double effectiveChartWidth) {
+    final gridPaint = Paint()
+      ..color = gridColor
+      ..strokeWidth = 1.0
+      ..style = PaintingStyle.stroke;
+
+    // Horizontal grid lines for price chart
+    for (int i = 0; i <= ChartConstants.gridLinesCount; i++) {
+      final y = (priceChartHeight / ChartConstants.gridLinesCount) * i;
+      canvas.drawLine(
+        Offset(0, y),
+        Offset(effectiveChartWidth, y),
+        gridPaint,
+      );
+    }
+
+    // Vertical grid lines
+    final effectiveCandleWidth = (candleWidth + candleSpacing) * timeScale;
+    final gridSpacing =
+        effectiveCandleWidth * ChartConstants.gridSpacingMultiplier;
+
+    // Ensure we have at least some vertical lines based on effective width
+    final minGridSpacing =
+        effectiveChartWidth * ChartConstants.minGridSpacingRatio;
+    final maxGridSpacing =
+        effectiveChartWidth * ChartConstants.maxGridSpacingRatio;
+    final actualGridSpacing = gridSpacing.clamp(minGridSpacing, maxGridSpacing);
+
+    for (double x = 0; x <= effectiveChartWidth; x += actualGridSpacing) {
+      canvas.drawLine(
+        Offset(x, 0),
+        Offset(x, size.height),
+        gridPaint,
+      );
+    }
+  }
+
+  void _drawPriceLabels(Canvas canvas, Size size, Map<String, double> priceData,
+      double chartHeight) {
+    final textPainter = TextPainter(textDirection: TextDirection.ltr);
+
+    for (int i = 0; i <= ChartConstants.gridLinesCount; i++) {
+      final price = priceData['min']! +
+          (priceData['range']! * (1 - i / ChartConstants.gridLinesCount));
+      final y = (chartHeight / ChartConstants.gridLinesCount) * i;
+
+      textPainter.text = TextSpan(
+        text: price.toStringAsFixed(3),
+        style: labelTextStyle.copyWith(
+          color: textColor,
+          fontSize: 11,
+          fontWeight: FontWeight.w500,
+        ),
+      );
+      textPainter.layout();
+
+      // Position labels in the reserved right area
+      final rightX = size.width - 75;
+
+      // Draw solid background for better readability
+      final rect = Rect.fromLTWH(
+        rightX - 4,
+        y - textPainter.height / 2 - 2,
+        textPainter.width + 8,
+        textPainter.height + 4,
+      );
+
+      canvas.drawRect(
+        rect,
+        Paint()..color = const Color(ChartConstants.defaultGridColor),
+      );
+
+      // Draw border around price label
+      canvas.drawRect(
+        rect,
+        Paint()
+          ..color = gridColor.withOpacity(0.9)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 0.8,
+      );
+
+      // Add a subtle shadow effect for depth
+      canvas.drawRect(
+        Rect.fromLTWH(rect.left + 1, rect.top + 1, rect.width, rect.height),
+        Paint()..color = Colors.black.withOpacity(0.1),
+      );
+
+      textPainter.paint(canvas, Offset(rightX, y - textPainter.height / 2));
+    }
+
+    // Draw a vertical separator line between chart and price labels
+    canvas.drawLine(
+      Offset(size.width - ChartConstants.priceLabelsWidth, 0),
+      Offset(size.width - ChartConstants.priceLabelsWidth, chartHeight),
+      Paint()
+        ..color = gridColor.withOpacity(0.6)
+        ..strokeWidth = 1.0,
+    );
+  }
+
+  void _drawTimeLabels(Canvas canvas, Size size, double effectiveChartWidth) {
+    final textPainter = TextPainter(textDirection: TextDirection.ltr);
+
+    // Show time labels for visible candles based on their actual spacing
+    final labelStep = (candles.length / 6).ceil().clamp(1, candles.length);
+
+    for (int i = 0; i < candles.length; i += labelStep) {
+      // Position time labels based on actual candle positions
+      final x = i * (candleWidth + candleSpacing) + candleWidth / 2;
+
+      // Only draw labels that are within the effective chart area
+      if (x > effectiveChartWidth) break;
+
+      final time = candles[i].time;
+
+      textPainter.text = TextSpan(
+        text: '${time.month}/${time.day}',
+        style: labelTextStyle.copyWith(
+          color: textColor,
+          fontSize: 10,
+          fontWeight: FontWeight.w400,
+        ),
+      );
+      textPainter.layout();
+
+      // Draw semi-transparent background matching the theme
+      final rect = Rect.fromLTWH(
+        x - textPainter.width / 2 - 2,
+        size.height - textPainter.height - 4,
+        textPainter.width + 4,
+        textPainter.height + 2,
+      );
+      canvas.drawRect(
+        rect,
+        Paint()
+          ..color =
+              const Color(ChartConstants.defaultGridColor).withOpacity(0.8),
+      );
+
+      // Draw border
+      canvas.drawRect(
+        rect,
+        Paint()
+          ..color = gridColor.withOpacity(0.8)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 0.5,
+      );
+
+      textPainter.paint(
+        canvas,
+        Offset(x - textPainter.width / 2, size.height - textPainter.height - 3),
+      );
+    }
+  }
+
+  void _drawCandlesticks(Canvas canvas, Map<String, double> priceData,
+      double chartHeight, double effectiveChartWidth) {
+    // Position candles using their actual scaled widths within the effective chart area
+    for (int i = 0; i < candles.length; i++) {
+      final candle = candles[i];
+      // Position candles based on actual width and spacing, constrained to effective width
+      final x = i * (candleWidth + candleSpacing) + candleWidth / 2;
+
+      // Only draw candles that are within the effective chart area
+      if (x <= effectiveChartWidth) {
+        _drawSingleCandle(
+          canvas,
+          candle,
+          x,
+          chartHeight,
+          priceData['min']!,
+          priceData['range']!,
+        );
+      }
+    }
+  }
+
+  void _drawSingleCandle(
+    Canvas canvas,
+    CandleStick candle,
+    double x,
+    double chartHeight,
+    double minPrice,
+    double priceRange,
+  ) {
+    final paint = Paint();
+    final wickPaint = Paint()
+      ..color = wickColor
+      ..strokeWidth = 1.5
+      ..style = PaintingStyle.stroke;
+
+    // Calculate Y positions
+    final highY =
+        chartHeight - ((candle.high - minPrice) / priceRange) * chartHeight;
+    final lowY =
+        chartHeight - ((candle.low - minPrice) / priceRange) * chartHeight;
+    final openY =
+        chartHeight - ((candle.open - minPrice) / priceRange) * chartHeight;
+    final closeY =
+        chartHeight - ((candle.close - minPrice) / priceRange) * chartHeight;
+
+    // Draw wicks
+    canvas.drawLine(
+      Offset(x, highY),
+      Offset(x, candle.isBullish ? closeY : openY),
+      wickPaint,
+    );
+    canvas.drawLine(
+      Offset(x, candle.isBullish ? openY : closeY),
+      Offset(x, lowY),
+      wickPaint,
+    );
+
+    // Draw candle body
+    final bodyTop = candle.isBullish ? closeY : openY;
+    final bodyBottom = candle.isBullish ? openY : closeY;
+    final bodyHeight = (bodyBottom - bodyTop).abs().clamp(1.5, double.infinity);
+
+    if (candle.isDoji) {
+      paint.color = dojiColor;
+      paint.strokeWidth = 2.5;
+      paint.style = PaintingStyle.stroke;
+      canvas.drawLine(
+        Offset(x - candleWidth / 2, bodyTop),
+        Offset(x + candleWidth / 2, bodyTop),
+        paint,
+      );
+    } else {
+      paint.color = candle.getColor(
+        bullishColor: bullishColor,
+        bearishColor: bearishColor,
+        dojiColor: dojiColor,
+      );
+
+      final rect = Rect.fromLTWH(
+        x - candleWidth / 2,
+        bodyTop,
+        candleWidth,
+        bodyHeight,
+      );
+
+      if (candle.isBullish) {
+        // Bullish candles: filled with border for better contrast
+        paint.style = PaintingStyle.fill;
+        canvas.drawRect(rect, paint);
+        // Add border
+        paint.style = PaintingStyle.stroke;
+        paint.strokeWidth = 1.0;
+        canvas.drawRect(rect, paint);
+      } else {
+        // Bearish candles: solid fill
+        paint.style = PaintingStyle.fill;
+        canvas.drawRect(rect, paint);
+      }
+    }
+  }
+
+  void _drawHoverTooltip(Canvas canvas, Size size) {
+    if (hoveredCandle == null || hoverPosition == null) return;
+
+    final textPainter = TextPainter(textDirection: TextDirection.ltr);
+    final tooltipPaint = Paint()
+      ..color = const Color(ChartConstants.defaultGridColor)
+      ..style = PaintingStyle.fill;
+
+    final borderPaint = Paint()
+      ..color = gridColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
+
+    // Tooltip content - formatted like trading apps
+    final tooltipText = '''
+Time: ${hoveredCandle!.time.day}/${hoveredCandle!.time.month}/${hoveredCandle!.time.year}
+O: ${hoveredCandle!.open.toStringAsFixed(3)}
+H: ${hoveredCandle!.high.toStringAsFixed(3)}
+L: ${hoveredCandle!.low.toStringAsFixed(3)}
+C: ${hoveredCandle!.close.toStringAsFixed(3)}
+Vol: ${hoveredCandle!.volume.toStringAsFixed(0)}
+''';
+
+    textPainter.text = TextSpan(
+      text: tooltipText,
+      style: TextStyle(
+        color: textColor,
+        fontSize: 11,
+        fontWeight: FontWeight.w500,
+        fontFamily: 'monospace',
+      ),
+    );
+    textPainter.layout();
+
+    // Position tooltip
+    final tooltipWidth = textPainter.width + ChartConstants.tooltipPadding * 2;
+    final tooltipHeight =
+        textPainter.height + ChartConstants.tooltipPadding * 2;
+
+    double tooltipX = hoverPosition!.dx + ChartConstants.tooltipOffset;
+    double tooltipY =
+        hoverPosition!.dy - tooltipHeight - ChartConstants.tooltipOffset;
+
+    // Adjust position if tooltip goes off screen
+    if (tooltipX + tooltipWidth > size.width) {
+      tooltipX =
+          hoverPosition!.dx - tooltipWidth - ChartConstants.tooltipOffset;
+    }
+    if (tooltipY < 0) {
+      tooltipY = hoverPosition!.dy + ChartConstants.tooltipOffset;
+    }
+
+    // Draw tooltip background with shadow effect
+    final shadowRect =
+        Rect.fromLTWH(tooltipX + 2, tooltipY + 2, tooltipWidth, tooltipHeight);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(shadowRect,
+          const Radius.circular(ChartConstants.tooltipBorderRadius)),
+      Paint()..color = Colors.black.withOpacity(0.3),
+    );
+
+    final tooltipRect =
+        Rect.fromLTWH(tooltipX, tooltipY, tooltipWidth, tooltipHeight);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(tooltipRect,
+          const Radius.circular(ChartConstants.tooltipBorderRadius)),
+      tooltipPaint,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(tooltipRect,
+          const Radius.circular(ChartConstants.tooltipBorderRadius)),
+      borderPaint,
+    );
+
+    // Draw tooltip text
+    textPainter.paint(
+        canvas,
+        Offset(tooltipX + ChartConstants.tooltipPadding,
+            tooltipY + ChartConstants.tooltipPadding));
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+}
