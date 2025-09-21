@@ -101,7 +101,7 @@ class _StockChartState extends State<StockChart> with TickerProviderStateMixin {
     }
 
     return ChangeNotifierProvider(
-      create: (context) => ChartProvider(),
+      create: (context) => ChartProvider()..setCandles(widget.candles),
       child: Container(
         height: widget.height,
         color: widget.backgroundColor,
@@ -149,7 +149,6 @@ class _StockChartState extends State<StockChart> with TickerProviderStateMixin {
 
         // Get the visible candles using the provider with effective width
         final visibleCandles = chartProvider.getVisibleCandles(
-          widget.candles,
           effectiveChartWidth,
           widget.candleWidth,
           widget.candleSpacing,

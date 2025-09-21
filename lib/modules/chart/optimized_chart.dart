@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import '../../services/chart_data_loader.dart';
 import 'enhanced_chart_provider.dart';
 import 'chart_constants.dart';
 import 'stock_chart_painter.dart';
@@ -227,9 +226,11 @@ class _OptimizedStockChartState extends State<OptimizedStockChart>
           final localPosition = renderBox.globalToLocal(event.position);
 
           final hoveredCandle = chartProvider.getCandleAtPosition(
+            chartProvider.candles,
             localPosition.dx,
             baseCandleWidth,
             baseCandleSpacing,
+            chartProvider.visibleStartIndex,
           );
 
           chartProvider.setHover(hoveredCandle, localPosition);

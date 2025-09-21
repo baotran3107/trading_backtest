@@ -2,7 +2,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../model/candle_model.dart';
 import '../../services/chart_data_loader.dart';
+import 'chart_state.dart';
 import 'chart_constants.dart';
+import 'chart_utils.dart';
+
+enum DataLoadingState { idle, loading, loaded, error }
 
 /// Enhanced chart provider with optimized data loading
 class EnhancedChartProvider extends ChangeNotifier {
@@ -213,17 +217,43 @@ class EnhancedChartProvider extends ChangeNotifier {
     final candleUnitWidth =
         _calculateCandleUnitWidth(candleWidth, candleSpacing);
     final maxVisibleCandles = (chartWidth / candleUnitWidth).floor();
+
+    // Calculate max scroll offset, but ensure it's never negative
     final maxScrollOffset =
-        (_candles.length - maxVisibleCandles) * candleUnitWidth;
+        ((_candles.length - maxVisibleCandles) * candleUnitWidth)
+            .clamp(0.0, double.infinity);
 
     // Apply smooth scrolling with momentum
     final momentumFactor =
         _scrollState.isScrolling ? ChartConstants.momentumFactor : 1.0;
-    final adjustedDeltaX = deltaX * momentumFactor;
-    final newScrollOffset = (_scrollState.scrollOffset - adjustedDeltaX)
-        .clamp(0.0, maxScrollOffset.toDouble());
 
-    if ((newScrollOffset - _scrollState.scrollOffset).abs() > 0.1) {
+    // Scale the delta based on the current zoom level to prevent jumping
+    // When zoomed out (small timeScale), reduce the scroll sensitivity more aggressively
+    final timeScale = _scaleState.timeScale.clamp(0.3, 3.0);
+    // Use a more aggressive scaling for very small movements at minimum zoom
+    final zoomSensitivity = timeScale < 0.5 ? timeScale * timeScale : timeScale;
+    final adjustedDeltaX = (deltaX * momentumFactor) / zoomSensitivity;
+
+    // Calculate new scroll offset
+    double newScrollOffset = _scrollState.scrollOffset - adjustedDeltaX;
+
+    // If there's no future data (maxScrollOffset is 0), prevent scrolling to future
+    if (maxScrollOffset <= 0) {
+      // Only allow scrolling to past, not to future
+      // If trying to scroll to future (negative delta), maintain current position
+      if (adjustedDeltaX > 0) {
+        newScrollOffset = _scrollState.scrollOffset; // Keep current position
+      } else {
+        newScrollOffset = newScrollOffset.clamp(0.0, _scrollState.scrollOffset);
+      }
+    } else {
+      // Normal clamping when there is future data
+      newScrollOffset = newScrollOffset.clamp(0.0, maxScrollOffset);
+    }
+
+    // Use adaptive threshold based on zoom level to prevent micro-movements from causing updates
+    final updateThreshold = timeScale < 0.5 ? 0.01 : 0.1;
+    if ((newScrollOffset - _scrollState.scrollOffset).abs() > updateThreshold) {
       _scrollState.scrollOffset = newScrollOffset;
       _updateVisibleIndices(
           _candles.length, candleUnitWidth, maxVisibleCandles);
@@ -245,13 +275,19 @@ class EnhancedChartProvider extends ChangeNotifier {
     _lastScrollVelocity = _scrollState.velocity.abs();
     _consecutiveScrollCount++;
 
+    // Be more conservative with data loading when zoomed out to prevent jumping
+    final isZoomedOut = _scaleState.timeScale < 0.5;
+    final loadingDelay = isZoomedOut
+        ? ChartConstants.preloadDelayMs * 3
+        : ChartConstants.preloadDelayMs;
+
     // Determine if we should use fast loading based on velocity
     final shouldUseFastLoading =
         _lastScrollVelocity > ChartConstants.scrollVelocityThreshold ||
             _consecutiveScrollCount > 3;
 
-    if (shouldUseFastLoading) {
-      // Use fast loading for high velocity scrolling
+    if (shouldUseFastLoading && !isZoomedOut) {
+      // Use fast loading for high velocity scrolling, but not when zoomed out
       _fastLoadTimer = Timer(const Duration(milliseconds: 20), () {
         if (_scrollState.isScrollingToPast && _hasMorePast && !_isLoadingPast) {
           fastLoadPastData();
@@ -263,8 +299,7 @@ class EnhancedChartProvider extends ChangeNotifier {
       });
     } else {
       // Use regular loading for normal scrolling
-      _preloadTimer = Timer(
-          const Duration(milliseconds: ChartConstants.preloadDelayMs), () {
+      _preloadTimer = Timer(Duration(milliseconds: loadingDelay), () {
         if (_scrollState.isScrollingToPast && _hasMorePast && !_isLoadingPast) {
           loadPastData();
         } else if (_scrollState.isScrollingToFuture &&
@@ -310,18 +345,24 @@ class EnhancedChartProvider extends ChangeNotifier {
     int startIndex = _scrollState.visibleStartIndex;
     int endIndex = _scrollState.visibleEndIndex;
 
-    // If not initialized, center the view
-    if (_scrollState.scrollOffset == 0.0 &&
-        _scrollState.visibleStartIndex == 0 &&
-        _scrollState.visibleEndIndex == 0) {
+    // If not initialized, start from the end (most recent data) instead of centering
+    if (!_scrollState.isInitialized) {
       final visibleCandleCount = maxVisibleCandles.clamp(1, totalCandles);
-      startIndex = ((totalCandles - visibleCandleCount) / 2)
-          .floor()
+      // Start from the end (most recent data) instead of centering
+      startIndex = (totalCandles - visibleCandleCount)
           .clamp(0, totalCandles - visibleCandleCount);
       endIndex = (startIndex + visibleCandleCount).clamp(0, totalCandles);
       _scrollState.visibleStartIndex = startIndex;
       _scrollState.visibleEndIndex = endIndex;
+      // Set the scroll offset to match the position at the end
+      _scrollState.scrollOffset = startIndex * candleUnitWidth;
+      // Mark as initialized to prevent re-initialization
+      _scrollState.markAsInitialized();
     }
+
+    // Ensure indices are within valid bounds
+    startIndex = startIndex.clamp(0, totalCandles);
+    endIndex = endIndex.clamp(startIndex, totalCandles);
 
     // Add buffer for smoother scrolling
     final bufferSize = (maxVisibleCandles * ChartConstants.scrollBufferRatio)
@@ -330,24 +371,32 @@ class EnhancedChartProvider extends ChangeNotifier {
     final bufferedStartIndex = (startIndex - bufferSize).clamp(0, totalCandles);
     final bufferedEndIndex = (endIndex + bufferSize).clamp(0, totalCandles);
 
+    // Ensure we have a valid range for sublist
+    if (bufferedStartIndex >= bufferedEndIndex ||
+        bufferedStartIndex >= totalCandles) {
+      // Return empty list if no valid range
+      return [];
+    }
+
     return _candles.sublist(bufferedStartIndex, bufferedEndIndex);
   }
 
   // Delegate methods to internal states
   void setHover(CandleStick? candle, Offset? position) {
-    final previousState = _hoverState.hoveredCandle != candle ||
+    final hasChanged = _hoverState.hoveredCandle != candle ||
         _hoverState.hoverPosition != position;
 
     _hoverState.setHover(candle, position);
 
-    if (previousState) {
+    if (hasChanged) {
       notifyListeners();
     }
   }
 
   void clearHover() {
-    if (_hoverState.hasHover) {
-      _hoverState.clear();
+    final hadHover = _hoverState.hasHover;
+    _hoverState.clear();
+    if (hadHover) {
       notifyListeners();
     }
   }
@@ -364,6 +413,8 @@ class EnhancedChartProvider extends ChangeNotifier {
     _scaleState.setTimeScale(_scaleState.timeScale * scale);
 
     if (oldScale != _scaleState.timeScale) {
+      // Normalize scroll state when zoom level changes to prevent jumping
+      _normalizeScrollStateAfterZoom(oldScale, _scaleState.timeScale);
       notifyListeners();
     }
   }
@@ -395,18 +446,19 @@ class EnhancedChartProvider extends ChangeNotifier {
   }
 
   CandleStick? getCandleAtPosition(
+    List<CandleStick> allCandles,
     double localX,
     double actualCandleWidth,
     double actualCandleSpacing,
+    int startIndex,
   ) {
-    final candleUnitWidth = actualCandleWidth + actualCandleSpacing;
-    final visibleCandleIndex = (localX / candleUnitWidth).floor();
-    final actualCandleIndex =
-        _scrollState.visibleStartIndex + visibleCandleIndex;
-    if (actualCandleIndex >= 0 && actualCandleIndex < _candles.length) {
-      return _candles[actualCandleIndex];
-    }
-    return null;
+    return ChartUtils.getCandleAtPosition(
+      allCandles,
+      localX,
+      actualCandleWidth,
+      actualCandleSpacing,
+      startIndex,
+    );
   }
 
   void resetAll() {
@@ -427,13 +479,20 @@ class EnhancedChartProvider extends ChangeNotifier {
 
   void _updateVisibleIndices(
       int totalDataLength, double candleUnitWidth, int maxVisibleCandles) {
-    final startIndex = (_scrollState.scrollOffset / candleUnitWidth).floor();
+    final startIndex = (_scrollState.scrollOffset / candleUnitWidth)
+        .floor()
+        .clamp(0, totalDataLength);
     final endIndex = (startIndex + maxVisibleCandles).clamp(0, totalDataLength);
     _scrollState.visibleStartIndex = startIndex;
     _scrollState.visibleEndIndex = endIndex;
 
-    // Use dynamic buffer based on chart size for smoother past/future detection
-    final bufferSize = (maxVisibleCandles * 0.1).ceil().clamp(5, 20);
+    // Use zoom-aware buffer size to prevent premature data loading when zoomed out
+    // When zoomed out (small candleUnitWidth), use a smaller buffer to prevent jumping
+    final baseBufferSize = (maxVisibleCandles * 0.1).ceil().clamp(5, 20);
+    final zoomFactor = (candleUnitWidth / 10.0)
+        .clamp(0.3, 3.0); // Normalize around default candleUnitWidth of 10
+    final bufferSize = (baseBufferSize * zoomFactor).ceil().clamp(2, 50);
+
     _scrollState.isScrollingToPast = startIndex <= bufferSize;
     _scrollState.isScrollingToFuture = endIndex >= totalDataLength - bufferSize;
   }
@@ -457,111 +516,32 @@ class EnhancedChartProvider extends ChangeNotifier {
     }
   }
 
+  /// Normalize scroll state after zoom level changes to maintain current view position
+  void _normalizeScrollStateAfterZoom(double oldScale, double newScale) {
+    if (_candles.isEmpty) return;
+
+    // Calculate the scale ratio
+    final scaleRatio = newScale / oldScale;
+
+    // Adjust scroll offset to maintain the same relative position
+    _scrollState.scrollOffset = _scrollState.scrollOffset * scaleRatio;
+
+    // Reset visible indices to be recalculated on next update
+    _scrollState.visibleStartIndex = 0;
+    _scrollState.visibleEndIndex = 0;
+
+    // Stop any momentum scrolling to prevent conflicts
+    _scrollState.stopMomentum();
+
+    // Cancel any pending data loading operations to prevent conflicts
+    _preloadTimer?.cancel();
+    _fastLoadTimer?.cancel();
+  }
+
   @override
   void dispose() {
     _preloadTimer?.cancel();
     _fastLoadTimer?.cancel();
     super.dispose();
-  }
-}
-
-// Reuse the state classes from the original ChartProvider
-class ChartHoverState {
-  CandleStick? hoveredCandle;
-  Offset? hoverPosition;
-
-  bool get hasHover => hoveredCandle != null && hoverPosition != null;
-
-  void setHover(CandleStick? candle, Offset? position) {
-    hoveredCandle = candle;
-    hoverPosition = position;
-  }
-
-  void clear() {
-    hoveredCandle = null;
-    hoverPosition = null;
-  }
-
-  bool operator ==(Object other) {
-    if (identical(this, other)) return true;
-    return other is ChartHoverState &&
-        other.hoveredCandle == hoveredCandle &&
-        other.hoverPosition == hoverPosition;
-  }
-
-  @override
-  int get hashCode => Object.hash(hoveredCandle, hoverPosition);
-}
-
-class ChartScaleState {
-  double timeScale = 1.0;
-  double priceScale = 1.0;
-  double baseFocalPointX = 0.0;
-  double baseFocalPointY = 0.0;
-
-  void setTimeScale(double value) {
-    timeScale =
-        value.clamp(ChartConstants.minTimeScale, ChartConstants.maxTimeScale);
-  }
-
-  void setPriceScale(double value) {
-    priceScale =
-        value.clamp(ChartConstants.minPriceScale, ChartConstants.maxPriceScale);
-  }
-
-  void reset() {
-    timeScale = 1.0;
-    priceScale = 1.0;
-  }
-
-  bool get isAtDefault => timeScale == 1.0 && priceScale == 1.0;
-}
-
-class ChartScrollState {
-  double scrollOffset = 0.0;
-  int visibleStartIndex = 0;
-  int visibleEndIndex = 0;
-  bool isScrollingToPast = false;
-  bool isScrollingToFuture = false;
-
-  // Smooth scrolling state
-  double _velocity = 0.0;
-  double _lastScrollTime = 0.0;
-
-  void reset() {
-    scrollOffset = 0.0;
-    visibleStartIndex = 0;
-    visibleEndIndex = 0;
-    isScrollingToPast = false;
-    isScrollingToFuture = false;
-    _velocity = 0.0;
-    _lastScrollTime = 0.0;
-  }
-
-  void updateVelocity(double deltaX) {
-    final currentTime = DateTime.now().millisecondsSinceEpoch.toDouble();
-    if (_lastScrollTime > 0) {
-      final deltaTime = (currentTime - _lastScrollTime) / 1000.0;
-      if (deltaTime > 0) {
-        _velocity = (deltaX / deltaTime)
-            .clamp(-ChartConstants.maxVelocity, ChartConstants.maxVelocity);
-      }
-    }
-    _lastScrollTime = currentTime;
-  }
-
-  void decayVelocity() {
-    _velocity *= ChartConstants.velocityDecay;
-    if (_velocity.abs() < ChartConstants.scrollThreshold) {
-      _velocity = 0.0;
-    }
-  }
-
-  double get velocity => _velocity;
-  bool get isScrolling => _velocity.abs() > ChartConstants.scrollThreshold;
-
-  void stopMomentum() {
-    _velocity = 0.0;
-    _lastScrollTime = 0.0;
   }
 }
