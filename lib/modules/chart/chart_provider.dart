@@ -128,6 +128,8 @@ class ChartProvider extends ChangeNotifier {
   bool get isScrollingToFuture => _scrollState.isScrollingToFuture;
   double get scrollVelocity => _scrollState.velocity;
   bool get isScrolling => _scrollState.isScrolling;
+  double get baseFocalPointX => _scaleState.baseFocalPointX;
+  double get baseFocalPointY => _scaleState.baseFocalPointY;
 
   /// Set the hovered candle and position (for tooltip display)
   void setHover(CandleStick? candle, Offset? position) {
@@ -174,6 +176,30 @@ class ChartProvider extends ChangeNotifier {
     }
 
     if (hasChanges) {
+      notifyListeners();
+    }
+  }
+
+  /// Update only horizontal scaling (time scale/zoom)
+  void updateHorizontalScale(double scale) {
+    if (scale == 1.0) return;
+
+    final oldScale = _scaleState.timeScale;
+    _scaleState.setTimeScale(_scaleState.timeScale * scale);
+
+    if (oldScale != _scaleState.timeScale) {
+      notifyListeners();
+    }
+  }
+
+  /// Update only vertical scaling (price scale)
+  void updateVerticalScale(double scale) {
+    if (scale == 1.0) return;
+
+    final oldScale = _scaleState.priceScale;
+    _scaleState.setPriceScale(_scaleState.priceScale * scale);
+
+    if (oldScale != _scaleState.priceScale) {
       notifyListeners();
     }
   }

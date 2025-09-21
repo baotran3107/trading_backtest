@@ -2,15 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import '../../model/candle_model.dart';
-import 'chart_provider.dart';
+import '../../services/chart_data_loader.dart';
+import 'enhanced_chart_provider.dart';
 import 'chart_constants.dart';
 import 'stock_chart_painter.dart';
-import 'optimized_chart.dart';
 
-/// A comprehensive stock chart widget that displays candlestick data with advanced features
-class StockChart extends StatefulWidget {
-  final List<CandleStick> candles;
+/// Optimized stock chart widget with enhanced data loading
+class OptimizedStockChart extends StatefulWidget {
+  final String symbol;
   final double height;
   final double candleWidth;
   final double candleSpacing;
@@ -28,12 +27,10 @@ class StockChart extends StatefulWidget {
   final bool enableInteraction;
   final double volumeHeightRatio;
   final TextStyle? labelTextStyle;
-  final VoidCallback? onLoadPastData;
-  final VoidCallback? onLoadFutureData;
 
-  const StockChart({
+  const OptimizedStockChart({
     Key? key,
-    required this.candles,
+    required this.symbol,
     this.height = ChartConstants.defaultChartHeight,
     this.candleWidth = ChartConstants.defaultCandleWidth,
     this.candleSpacing = ChartConstants.defaultCandleSpacing,
@@ -51,15 +48,14 @@ class StockChart extends StatefulWidget {
     this.enableInteraction = true,
     this.volumeHeightRatio = 0.2,
     this.labelTextStyle,
-    this.onLoadPastData,
-    this.onLoadFutureData,
   }) : super(key: key);
 
   @override
-  State<StockChart> createState() => _StockChartState();
+  State<OptimizedStockChart> createState() => _OptimizedStockChartState();
 }
 
-class _StockChartState extends State<StockChart> with TickerProviderStateMixin {
+class _OptimizedStockChartState extends State<OptimizedStockChart>
+    with TickerProviderStateMixin {
   late AnimationController _momentumController;
   late Animation<double> _momentumAnimation;
 
@@ -87,21 +83,8 @@ class _StockChartState extends State<StockChart> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.candles.isEmpty) {
-      return Container(
-        height: widget.height,
-        color: widget.backgroundColor,
-        child: Center(
-          child: Text(
-            'No data available',
-            style: TextStyle(color: widget.textColor),
-          ),
-        ),
-      );
-    }
-
     return ChangeNotifierProvider(
-      create: (context) => ChartProvider(),
+      create: (context) => EnhancedChartProvider(symbol: widget.symbol),
       child: Container(
         height: widget.height,
         color: widget.backgroundColor,
@@ -116,8 +99,21 @@ class _StockChartState extends State<StockChart> with TickerProviderStateMixin {
   }
 
   Widget _buildChart(double chartWidth) {
-    return Consumer<ChartProvider>(
+    return Consumer<EnhancedChartProvider>(
       builder: (context, chartProvider, child) {
+        // Handle loading states
+        if (chartProvider.loadingState == DataLoadingState.loading) {
+          return _buildLoadingWidget();
+        }
+
+        if (chartProvider.loadingState == DataLoadingState.error) {
+          return _buildErrorWidget(chartProvider.errorMessage);
+        }
+
+        if (chartProvider.candles.isEmpty) {
+          return _buildEmptyWidget();
+        }
+
         // Add momentum animation listener
         _momentumAnimation.addListener(() {
           if (chartProvider.isScrolling) {
@@ -128,8 +124,8 @@ class _StockChartState extends State<StockChart> with TickerProviderStateMixin {
                   (widget.showPriceLabels
                       ? ChartConstants.priceLabelsWidth
                       : 0.0);
-              chartProvider.applyMomentum(
-                widget.candles.length,
+              chartProvider.updateScrollOffset(
+                0.0, // No delta for momentum
                 effectiveChartWidth,
                 widget.candleWidth,
                 widget.candleSpacing,
@@ -137,7 +133,8 @@ class _StockChartState extends State<StockChart> with TickerProviderStateMixin {
             }
           }
         });
-        // Calculate effective chart width (reserve space for price labels)
+
+        // Calculate effective chart width
         final effectiveChartWidth = chartWidth -
             (widget.showPriceLabels ? ChartConstants.priceLabelsWidth : 0.0);
 
@@ -147,15 +144,14 @@ class _StockChartState extends State<StockChart> with TickerProviderStateMixin {
         final baseCandleWidth = scaledDimensions['candleWidth']!;
         final baseCandleSpacing = scaledDimensions['candleSpacing']!;
 
-        // Get the visible candles using the provider with effective width
+        // Get the visible candles using the provider
         final visibleCandles = chartProvider.getVisibleCandles(
-          widget.candles,
           effectiveChartWidth,
           widget.candleWidth,
           widget.candleSpacing,
         );
 
-        // Define gesture handlers within the Consumer context
+        // Define gesture handlers
         void onScaleStart(ScaleStartDetails details) {
           chartProvider.startScale(
               details.focalPoint.dx, details.focalPoint.dy);
@@ -173,24 +169,13 @@ class _StockChartState extends State<StockChart> with TickerProviderStateMixin {
                       : 0.0);
               chartProvider.updateScrollOffset(
                 details.focalPointDelta.dx,
-                widget.candles.length,
                 effectiveChartWidth,
                 widget.candleWidth,
                 widget.candleSpacing,
               );
-
-              // Check if we need to load more data
-              if (chartProvider.isScrollingToPast &&
-                  widget.onLoadPastData != null) {
-                widget.onLoadPastData!();
-              } else if (chartProvider.isScrollingToFuture &&
-                  widget.onLoadFutureData != null) {
-                widget.onLoadFutureData!();
-              }
             }
           } else if (details.scale != 1.0) {
             // This is a scale gesture - only handle horizontal scaling (zoom)
-            // Calculate the gesture direction to determine if it's horizontal
             final deltaX =
                 (details.focalPoint.dx - chartProvider.baseFocalPointX).abs();
             final deltaY =
@@ -200,11 +185,10 @@ class _StockChartState extends State<StockChart> with TickerProviderStateMixin {
             if (deltaX > deltaY) {
               chartProvider.updateHorizontalScale(details.scale);
             }
-            // Vertical scaling is handled by the price axis pan gestures
           }
         }
 
-        void _startMomentumScrolling(ChartProvider chartProvider) {
+        void _startMomentumScrolling(EnhancedChartProvider chartProvider) {
           _momentumController.forward().then((_) {
             if (chartProvider.isScrolling) {
               _momentumController.reset();
@@ -243,11 +227,9 @@ class _StockChartState extends State<StockChart> with TickerProviderStateMixin {
           final localPosition = renderBox.globalToLocal(event.position);
 
           final hoveredCandle = chartProvider.getCandleAtPosition(
-            widget.candles,
             localPosition.dx,
             baseCandleWidth,
             baseCandleSpacing,
-            chartProvider.visibleStartIndex,
           );
 
           chartProvider.setHover(hoveredCandle, localPosition);
@@ -391,111 +373,180 @@ class _StockChartState extends State<StockChart> with TickerProviderStateMixin {
                   ),
                 ),
               ),
+
+            // Loading indicators with better positioning
+            if (chartProvider.isLoadingPast)
+              Positioned(
+                top: 10,
+                left: 10,
+                child: _buildLoadingIndicator('Loading past data...', true),
+              ),
+
+            if (chartProvider.isLoadingFuture)
+              Positioned(
+                top: 10,
+                right: 10,
+                child: _buildLoadingIndicator('Loading future data...', false),
+              ),
+
+            // Scroll velocity indicator (for debugging)
+            if (chartProvider.scrollVelocity.abs() >
+                ChartConstants.scrollVelocityThreshold)
+              Positioned(
+                top: 50,
+                left: 10,
+                child: _buildVelocityIndicator(chartProvider.scrollVelocity),
+              ),
           ],
         );
       },
     );
   }
 
+  Widget _buildLoadingWidget() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircularProgressIndicator(
+            color: widget.textColor,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Loading chart data...',
+            style: TextStyle(
+              color: widget.textColor,
+              fontSize: 16,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorWidget(String? errorMessage) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.error_outline,
+            color: widget.textColor,
+            size: 48,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Failed to load chart data',
+            style: TextStyle(
+              color: widget.textColor,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          if (errorMessage != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              errorMessage,
+              style: TextStyle(
+                color: widget.textColor.withOpacity(0.7),
+                fontSize: 12,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: () {
+              // Retry loading
+              final provider = context.read<EnhancedChartProvider>();
+              provider.clearCache();
+              setState(() {});
+            },
+            child: const Text('Retry'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyWidget() {
+    return Center(
+      child: Text(
+        'No data available',
+        style: TextStyle(
+          color: widget.textColor,
+          fontSize: 16,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoadingIndicator(String message, bool isPast) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: widget.backgroundColor.withOpacity(0.95),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isPast
+              ? widget.bullishColor.withOpacity(0.5)
+              : widget.bearishColor.withOpacity(0.5),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: isPast ? widget.bullishColor : widget.bearishColor,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            message,
+            style: TextStyle(
+              color: widget.textColor,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVelocityIndicator(double velocity) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: widget.backgroundColor.withOpacity(0.8),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: widget.gridColor.withOpacity(0.3)),
+      ),
+      child: Text(
+        'Velocity: ${velocity.toStringAsFixed(1)}',
+        style: TextStyle(
+          color: widget.textColor.withOpacity(0.7),
+          fontSize: 10,
+        ),
+      ),
+    );
+  }
+
   void _onPointerSignal(PointerSignalEvent event) {
     // Disable pointer signal for now since we're using pinch-to-zoom
     // Can be re-enabled for mouse wheel support if needed
-  }
-}
-
-/// A simplified stock chart widget for basic use cases
-class SimpleStockChart extends StatelessWidget {
-  final List<CandleStick> candles;
-  final double height;
-  final Color bullishColor;
-  final Color bearishColor;
-
-  const SimpleStockChart({
-    Key? key,
-    required this.candles,
-    this.height = 300.0,
-    this.bullishColor = const Color(ChartConstants.defaultBullishColor),
-    this.bearishColor = const Color(ChartConstants.defaultBearishColor),
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return StockChart(
-      candles: candles,
-      height: height,
-      bullishColor: bullishColor,
-      bearishColor: bearishColor,
-      showVolume: false,
-      enableInteraction: false,
-      showTimeLabels: false,
-    );
-  }
-}
-
-/// An optimized stock chart widget with enhanced data loading performance
-class OptimizedStockChartWidget extends StatelessWidget {
-  final String symbol;
-  final double height;
-  final double candleWidth;
-  final double candleSpacing;
-  final Color bullishColor;
-  final Color bearishColor;
-  final Color dojiColor;
-  final Color wickColor;
-  final Color backgroundColor;
-  final Color gridColor;
-  final Color textColor;
-  final bool showGrid;
-  final bool showVolume;
-  final bool showPriceLabels;
-  final bool showTimeLabels;
-  final bool enableInteraction;
-  final double volumeHeightRatio;
-  final TextStyle? labelTextStyle;
-
-  const OptimizedStockChartWidget({
-    Key? key,
-    required this.symbol,
-    this.height = ChartConstants.defaultChartHeight,
-    this.candleWidth = ChartConstants.defaultCandleWidth,
-    this.candleSpacing = ChartConstants.defaultCandleSpacing,
-    this.bullishColor = const Color(ChartConstants.defaultBullishColor),
-    this.bearishColor = const Color(ChartConstants.defaultBearishColor),
-    this.dojiColor = const Color(ChartConstants.defaultDojiColor),
-    this.wickColor = const Color(ChartConstants.defaultWickColor),
-    this.backgroundColor = const Color(ChartConstants.defaultBackgroundColor),
-    this.gridColor = const Color(ChartConstants.defaultGridColor),
-    this.textColor = const Color(ChartConstants.defaultTextColor),
-    this.showGrid = true,
-    this.showVolume = false,
-    this.showPriceLabels = true,
-    this.showTimeLabels = true,
-    this.enableInteraction = true,
-    this.volumeHeightRatio = 0.2,
-    this.labelTextStyle,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return OptimizedStockChart(
-      symbol: symbol,
-      height: height,
-      candleWidth: candleWidth,
-      candleSpacing: candleSpacing,
-      bullishColor: bullishColor,
-      bearishColor: bearishColor,
-      dojiColor: dojiColor,
-      wickColor: wickColor,
-      backgroundColor: backgroundColor,
-      gridColor: gridColor,
-      textColor: textColor,
-      showGrid: showGrid,
-      showVolume: showVolume,
-      showPriceLabels: showPriceLabels,
-      showTimeLabels: showTimeLabels,
-      enableInteraction: enableInteraction,
-      volumeHeightRatio: volumeHeightRatio,
-      labelTextStyle: labelTextStyle,
-    );
   }
 }

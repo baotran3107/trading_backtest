@@ -42,6 +42,20 @@ class ChartConstants {
   static const int minScrollBuffer = 2; // Minimum buffer size
   static const int maxScrollBuffer = 10; // Maximum buffer size
 
+  // Data loading optimization settings
+  static const int defaultChunkSize = 2000; // Default data chunk size
+  static const int maxCacheSize = 20000; // Maximum candles to keep in memory
+  static const int preloadBuffer =
+      1000; // Preload this many candles ahead/behind
+  static const int preloadDelayMs = 50; // Reduced delay for faster response
+  static const double dataLoadingThreshold =
+      0.05; // Reduced threshold for earlier data loading
+  static const int fastLoadSize = 100; // Size for fast loading during scroll
+  static const int aggressivePreloadBuffer =
+      200; // Buffer for aggressive preloading
+  static const double scrollVelocityThreshold =
+      2.0; // Velocity threshold for fast loading
+
   // Tooltip settings
   static const double tooltipPadding = 10.0;
   static const double tooltipOffset = 15.0;
