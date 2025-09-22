@@ -8,25 +8,25 @@ import 'widgets/price_display_panel.dart';
 import 'widgets/state_widgets.dart';
 
 /// Demo page showing how to use the StockChart widget with XAUUSD data
-class StockChartDemo extends StatefulWidget {
-  const StockChartDemo({super.key});
+class BackTestScreen extends StatefulWidget {
+  const BackTestScreen({super.key});
 
   @override
-  State<StockChartDemo> createState() => _StockChartDemoState();
+  State<BackTestScreen> createState() => _BackTestScreenState();
 }
 
-class _StockChartDemoState extends State<StockChartDemo> {
+class _BackTestScreenState extends State<BackTestScreen> {
   final TradingDataRepository _repository = TradingDataRepository();
   List<CandleStick>? _xauusdData;
   bool _isLoading = true;
   String? _errorMessage;
   Map<String, dynamic>? _metadata;
   double? _previousPrice;
-  
+
   // Trading controls state
   double _lotSize = 0.01;
   final List<double> _lotSizes = [0.01, 0.05, 0.10, 0.25, 0.50, 1.0];
-  
+
   // Scroll functionality state
   bool _isLoadingPast = false;
   bool _isLoadingFuture = false;
@@ -56,15 +56,15 @@ class _StockChartDemoState extends State<StockChartDemo> {
 
       // Load all data but show a subset initially
       final allData = await _repository.getAllXAUUSDData();
-      
+
       // Take a middle chunk of the data to allow scrolling in both directions
       final totalData = allData.length;
       final centerIndex = totalData ~/ 2;
       final halfChunk = 500; // Show 1000 candles initially
-      
+
       _currentStartIndex = (centerIndex - halfChunk).clamp(0, totalData);
       _currentEndIndex = (centerIndex + halfChunk).clamp(0, totalData);
-      
+
       final dataToShow = allData.sublist(_currentStartIndex, _currentEndIndex);
 
       setState(() {
@@ -96,11 +96,12 @@ class _StockChartDemoState extends State<StockChartDemo> {
     try {
       // Simulate network delay
       await Future.delayed(const Duration(milliseconds: 300));
-      
+
       final loadChunkSize = 500;
-      final newStartIndex = (_currentStartIndex - loadChunkSize).clamp(0, _allData!.length);
+      final newStartIndex =
+          (_currentStartIndex - loadChunkSize).clamp(0, _allData!.length);
       final pastData = _allData!.sublist(newStartIndex, _currentStartIndex);
-      
+
       setState(() {
         _xauusdData = [...pastData, ..._xauusdData!];
         _currentStartIndex = newStartIndex;
@@ -125,13 +126,14 @@ class _StockChartDemoState extends State<StockChartDemo> {
     try {
       // Simulate network delay
       await Future.delayed(const Duration(milliseconds: 300));
-      
+
       final loadChunkSize = 500;
-      final newEndIndex = (_currentEndIndex + loadChunkSize).clamp(0, _allData!.length);
-      
+      final newEndIndex =
+          (_currentEndIndex + loadChunkSize).clamp(0, _allData!.length);
+
       if (newEndIndex > _currentEndIndex) {
         final futureData = _allData!.sublist(_currentEndIndex, newEndIndex);
-        
+
         setState(() {
           _xauusdData = [..._xauusdData!, ...futureData];
           _currentEndIndex = newEndIndex;
@@ -229,10 +231,11 @@ class _StockChartDemoState extends State<StockChartDemo> {
     setState(() {
       _isPlaying = !_isPlaying;
     });
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(_isPlaying ? 'Backtesting: Playing' : 'Backtesting: Paused'),
+        content:
+            Text(_isPlaying ? 'Backtesting: Playing' : 'Backtesting: Paused'),
         backgroundColor: _isPlaying ? Colors.green : Colors.orange,
         duration: const Duration(seconds: 1),
       ),
@@ -297,10 +300,10 @@ class _StockChartDemoState extends State<StockChartDemo> {
   Widget _buildResponsiveLayout(BoxConstraints constraints) {
     final isPortrait = constraints.maxHeight > constraints.maxWidth;
     final screenWidth = constraints.maxWidth;
-    
+
     // Determine if we should use mobile or tablet/desktop layout
     final isMobile = screenWidth < 600;
-    
+
     if (isMobile && isPortrait) {
       return _buildMobilePortraitLayout();
     } else if (isMobile && !isPortrait) {
@@ -316,7 +319,7 @@ class _StockChartDemoState extends State<StockChartDemo> {
         children: [
           // Price display panel
           _buildPricePanel(),
-          
+
           // Chart takes most of the space
           Expanded(
             flex: 7,
@@ -325,7 +328,7 @@ class _StockChartDemoState extends State<StockChartDemo> {
               child: _buildChart(),
             ),
           ),
-          
+
           // Controls at bottom
           Expanded(
             flex: 2,
@@ -364,7 +367,7 @@ class _StockChartDemoState extends State<StockChartDemo> {
               ],
             ),
           ),
-          
+
           // Controls on the right side
           SizedBox(
             width: 200,
@@ -392,16 +395,16 @@ class _StockChartDemoState extends State<StockChartDemo> {
           children: [
             // Price panel
             _buildPricePanel(),
-            
+
             const SizedBox(height: 16),
-            
+
             // Chart area
             Expanded(
               child: _buildChart(),
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // Controls row
             Row(
               children: [
@@ -483,8 +486,9 @@ class _StockChartDemoState extends State<StockChartDemo> {
   }
 
   Widget _buildPricePanel() {
-    final currentPrice = _xauusdData?.isNotEmpty == true ? _xauusdData!.last.close : null;
-    
+    final currentPrice =
+        _xauusdData?.isNotEmpty == true ? _xauusdData!.last.close : null;
+
     return PriceDisplayPanel(
       currentPrice: currentPrice,
       previousPrice: _previousPrice,
@@ -495,8 +499,9 @@ class _StockChartDemoState extends State<StockChartDemo> {
   }
 
   Widget _buildTradingControlsWidget() {
-    final currentPrice = _xauusdData?.isNotEmpty == true ? _xauusdData!.last.close : 0.0;
-    
+    final currentPrice =
+        _xauusdData?.isNotEmpty == true ? _xauusdData!.last.close : 0.0;
+
     return TradingControls(
       currentPrice: currentPrice,
       lotSize: _lotSize,
@@ -519,5 +524,4 @@ class _StockChartDemoState extends State<StockChartDemo> {
       onNext: _onBacktestNext,
     );
   }
-
 }

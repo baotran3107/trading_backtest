@@ -67,12 +67,12 @@ class MainMenu extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const StockChartDemo(),
+                      builder: (context) => const BackTestScreen(),
                     ),
                   );
                 },
                 icon: const Icon(Icons.show_chart),
-                label: const Text('Stock Chart Demo'),
+                label: const Text('Back Test'),
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
