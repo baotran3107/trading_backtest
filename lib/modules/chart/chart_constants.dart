@@ -1,10 +1,10 @@
 /// Constants for chart configuration and styling
 class ChartConstants {
   // Scaling limits
-  static const double minTimeScale = 0.3;
-  static const double maxTimeScale = 3.0;
+  static const double minTimeScale = 0.1;
+  static const double maxTimeScale = 5.0;
   static const double minPriceScale = 0.1;
-  static const double maxPriceScale = 2.0;
+  static const double maxPriceScale = 3.0;
 
   // Default dimensions
   static const double defaultCandleWidth = 8.0;
@@ -30,6 +30,17 @@ class ChartConstants {
   static const double minVisibleRange = 0.01; // 1% of original range
   static const double maxVisibleRange = 10.0; // 10x original range
   static const double basePadding = 0.05; // 5% padding around price range
+
+  // Zoom sensitivity settings
+  static const double zoomSensitivity =
+      0.1; // Reduce zoom sensitivity even more (0.1 = very slow, 1.0 = normal)
+  static const double mouseWheelZoomSensitivity =
+      0.02; // Even slower for mouse wheel
+  static const double minZoomScale = 0.99; // Minimum scale change per gesture
+  static const double maxZoomScale = 1.01; // Maximum scale change per gesture
+
+  // Zoom animation settings
+  static const Duration zoomAnimationDuration = Duration(milliseconds: 150);
 
   // Scroll optimization settings
   static const double scrollThreshold =

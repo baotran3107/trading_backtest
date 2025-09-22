@@ -188,18 +188,32 @@ class _StockChartState extends State<StockChart> with TickerProviderStateMixin {
               }
             }
           } else if (details.scale != 1.0) {
-            // This is a scale gesture - only handle horizontal scaling (zoom)
-            // Calculate the gesture direction to determine if it's horizontal
-            final deltaX =
-                (details.focalPoint.dx - chartProvider.baseFocalPointX).abs();
-            final deltaY =
-                (details.focalPoint.dy - chartProvider.baseFocalPointY).abs();
+            // This is a scale gesture - handle zoom with focal point preservation
+            // Calculate effective chart width for proper focal point calculation
+            final layoutBuilder = context.findRenderObject() as RenderBox?;
+            if (layoutBuilder != null) {
+              final fullChartWidth = layoutBuilder.size.width;
+              final effectiveChartWidth = fullChartWidth -
+                  (widget.showPriceLabels
+                      ? ChartConstants.priceLabelsWidth
+                      : 0.0);
 
-            // Only apply scaling if the gesture is primarily horizontal (zoom)
-            if (deltaX > deltaY) {
-              chartProvider.updateHorizontalScale(details.scale);
+              // Use the focal point from the gesture, but ensure it's within chart bounds
+              final focalPointX =
+                  details.focalPoint.dx.clamp(0.0, effectiveChartWidth);
+
+              // Use context-aware focal point preservation for zoom
+              chartProvider.updateHorizontalScaleWithFocalPointAndContext(
+                  details.scale,
+                  focalPointX,
+                  effectiveChartWidth,
+                  widget.candleWidth,
+                  widget.candleSpacing);
+            } else {
+              // Fallback to regular focal point preservation
+              chartProvider.updateHorizontalScaleWithFocalPoint(
+                  details.scale, details.focalPoint.dx);
             }
-            // Vertical scaling is handled by the price axis pan gestures
           }
         }
 
@@ -397,8 +411,34 @@ class _StockChartState extends State<StockChart> with TickerProviderStateMixin {
   }
 
   void _onPointerSignal(PointerSignalEvent event) {
-    // Disable pointer signal for now since we're using pinch-to-zoom
-    // Can be re-enabled for mouse wheel support if needed
+    if (event is PointerScrollEvent) {
+      // Handle mouse wheel zoom with center focal point and controlled sensitivity
+      final rawScaleFactor = event.scrollDelta.dy > 0 ? 0.9 : 1.1;
+      final chartProvider = context.read<ChartProvider>();
+
+      // Apply mouse wheel specific sensitivity for even more controlled zooming
+      final sensitivity = ChartConstants.mouseWheelZoomSensitivity;
+      final scaleChange = (rawScaleFactor - 1.0) * sensitivity;
+      final controlledScaleFactor = 1.0 + scaleChange;
+
+      // Use center of chart as focal point for mouse wheel zoom
+      final layoutBuilder = context.findRenderObject() as RenderBox?;
+      if (layoutBuilder != null) {
+        final chartWidth = layoutBuilder.size.width;
+        final effectiveChartWidth = chartWidth -
+            (widget.showPriceLabels ? ChartConstants.priceLabelsWidth : 0.0);
+        final centerX = effectiveChartWidth / 2;
+
+        chartProvider.updateHorizontalScaleWithFocalPointAndContext(
+            controlledScaleFactor,
+            centerX,
+            effectiveChartWidth,
+            widget.candleWidth,
+            widget.candleSpacing);
+      } else {
+        chartProvider.updateHorizontalScale(controlledScaleFactor);
+      }
+    }
   }
 }
 

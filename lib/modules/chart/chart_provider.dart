@@ -90,13 +90,87 @@ class ChartProvider extends ChangeNotifier {
     if (scale == 1.0) return;
 
     final oldScale = _scaleState.timeScale;
-    _scaleState.setTimeScale(_scaleState.timeScale * scale);
+    // Apply scale factor with smoothing to prevent jumpy behavior
+    final newScale = _scaleState.timeScale * scale;
+    _scaleState.setTimeScale(newScale);
 
     if (oldScale != _scaleState.timeScale) {
       // Normalize scroll state when zoom level changes to prevent jumping
       _normalizeScrollStateAfterZoom(oldScale, _scaleState.timeScale);
       notifyListeners();
     }
+  }
+
+  /// Update horizontal scaling with focal point preservation
+  void updateHorizontalScaleWithFocalPoint(double scale, double focalPointX) {
+    if (scale == 1.0) return;
+
+    final oldScale = _scaleState.timeScale;
+    final newScale = _scaleState.timeScale * scale;
+    _scaleState.setTimeScale(newScale);
+
+    if (oldScale != _scaleState.timeScale) {
+      // Preserve the focal point during zoom
+      _normalizeScrollStateAfterZoomWithFocalPoint(
+          oldScale, _scaleState.timeScale, focalPointX);
+      notifyListeners();
+    }
+  }
+
+  /// Update horizontal scaling with focal point preservation and chart context
+  void updateHorizontalScaleWithFocalPointAndContext(
+      double scale,
+      double focalPointX,
+      double chartWidth,
+      double candleWidth,
+      double candleSpacing) {
+    if (scale == 1.0) return;
+
+    // Apply controlled zoom sensitivity
+    final controlledScale = _calculateControlledZoomScale(scale);
+    if (controlledScale == 1.0) return;
+
+    final oldScale = _scaleState.timeScale;
+    final newScale = _scaleState.timeScale * controlledScale;
+
+    // Only apply zoom if the change is significant enough
+    if (!_shouldApplyZoomChange(newScale, oldScale)) return;
+
+    // Ensure the chart is properly initialized before zooming
+    if (!_scrollState.isInitialized) return;
+
+    _scaleState.setTimeScale(newScale);
+
+    if (oldScale != _scaleState.timeScale) {
+      // Preserve the focal point during zoom with proper context
+      _normalizeScrollStateAfterZoomWithFocalPointAndContext(
+          oldScale,
+          _scaleState.timeScale,
+          focalPointX,
+          chartWidth,
+          candleWidth,
+          candleSpacing);
+      notifyListeners();
+    }
+  }
+
+  /// Calculate controlled zoom scale with sensitivity limits
+  double _calculateControlledZoomScale(double rawScale) {
+    // Apply zoom sensitivity to reduce the scale change
+    final sensitivity = ChartConstants.zoomSensitivity;
+    final scaleChange = (rawScale - 1.0) * sensitivity;
+    final controlledScale = 1.0 + scaleChange;
+
+    // Clamp the scale change to prevent too aggressive zooming
+    return controlledScale.clamp(
+        ChartConstants.minZoomScale, ChartConstants.maxZoomScale);
+  }
+
+  /// Check if zoom change is significant enough to apply
+  bool _shouldApplyZoomChange(double newScale, double currentScale) {
+    // Only apply zoom if the change is significant enough
+    final scaleDifference = (newScale - currentScale).abs();
+    return scaleDifference >= 0.001; // Minimum 0.1% change
   }
 
   /// Update only vertical scaling (price scale)
@@ -325,11 +399,90 @@ class ChartProvider extends ChangeNotifier {
     final scaleRatio = newScale / oldScale;
 
     // Adjust scroll offset to maintain the same relative position
-    _scrollState.scrollOffset = _scrollState.scrollOffset * scaleRatio;
+    // Use a more conservative approach to prevent jumping
+    final adjustedOffset = _scrollState.scrollOffset * scaleRatio;
+    _scrollState.scrollOffset = adjustedOffset.clamp(0.0, double.infinity);
 
     // Reset visible indices to be recalculated on next update
     _scrollState.visibleStartIndex = 0;
     _scrollState.visibleEndIndex = 0;
+
+    // Stop any momentum scrolling to prevent conflicts
+    _scrollState.stopMomentum();
+  }
+
+  /// Normalize scroll state after zoom with focal point preservation
+  void _normalizeScrollStateAfterZoomWithFocalPoint(
+      double oldScale, double newScale, double focalPointX) {
+    if (_allCandles.isEmpty) return;
+
+    // Calculate the scale ratio
+    final scaleRatio = newScale / oldScale;
+
+    // Calculate the position of the focal point relative to the current view
+    // The focalPointX is already in the effective chart coordinates
+    final currentScrollOffset = _scrollState.scrollOffset;
+    final focalPointInData = currentScrollOffset + focalPointX;
+
+    // Adjust the scroll offset to keep the focal point in the same screen position
+    // This ensures the focal point stays at the same screen location after zoom
+    final newScrollOffset = (focalPointInData * scaleRatio) - focalPointX;
+
+    // Clamp the scroll offset to valid range
+    _scrollState.scrollOffset = newScrollOffset.clamp(0.0, double.infinity);
+
+    // Reset visible indices to be recalculated on next update
+    _scrollState.visibleStartIndex = 0;
+    _scrollState.visibleEndIndex = 0;
+
+    // Stop any momentum scrolling to prevent conflicts
+    _scrollState.stopMomentum();
+  }
+
+  /// Normalize scroll state after zoom with focal point preservation and chart context
+  void _normalizeScrollStateAfterZoomWithFocalPointAndContext(
+      double oldScale,
+      double newScale,
+      double focalPointX,
+      double chartWidth,
+      double candleWidth,
+      double candleSpacing) {
+    if (_allCandles.isEmpty) return;
+
+    // Calculate candle unit widths for both old and new scales
+    final oldCandleUnitWidth = ChartUtils.calculateCandleUnitWidth(
+        candleWidth, candleSpacing, oldScale);
+    final newCandleUnitWidth = ChartUtils.calculateCandleUnitWidth(
+        candleWidth, candleSpacing, newScale);
+
+    // Calculate the current continuous data position of the focal point (in pixels)
+    final currentScrollOffset = _scrollState.scrollOffset;
+    final focalPointInData = currentScrollOffset + focalPointX;
+
+    // Convert continuous data position proportionally between scales
+    final scaledFocalPointInData =
+        (focalPointInData / oldCandleUnitWidth) * newCandleUnitWidth;
+
+    // Compute new scroll offset so the focal point remains at the same screen x
+    final newScrollOffset = scaledFocalPointInData - focalPointX;
+
+    // Calculate the maximum possible scroll offset based on data length
+    final maxScrollOffset =
+        ((_allCandles.length * newCandleUnitWidth) - chartWidth)
+            .clamp(0.0, double.infinity);
+
+    // Clamp the scroll offset to valid range
+    _scrollState.scrollOffset = newScrollOffset.clamp(0.0, maxScrollOffset);
+
+    // Immediately update visible indices to prevent flicker/empty ranges
+    final maxVisibleCandles = (chartWidth / newCandleUnitWidth).floor();
+    final startIndex = (_scrollState.scrollOffset / newCandleUnitWidth)
+        .floor()
+        .clamp(0, _allCandles.length);
+    final endIndex =
+        (startIndex + maxVisibleCandles).clamp(0, _allCandles.length);
+    _scrollState.visibleStartIndex = startIndex;
+    _scrollState.visibleEndIndex = endIndex;
 
     // Stop any momentum scrolling to prevent conflicts
     _scrollState.stopMomentum();
