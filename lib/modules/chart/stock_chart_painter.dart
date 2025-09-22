@@ -80,6 +80,10 @@ class StockChartPainter extends CustomPainter {
       _drawTimeLabels(canvas, size, effectiveChartWidth);
     }
 
+    // Draw current price line and label box on the price axis
+    _drawCurrentPrice(
+        canvas, size, priceData, effectiveChartHeight, effectiveChartWidth);
+
     // Tooltip removed per requirement: no hover-to-candle tooltip rendering
   }
 
@@ -323,6 +327,116 @@ class StockChartPainter extends CustomPainter {
         );
       }
     }
+  }
+
+  void _drawCurrentPrice(
+    Canvas canvas,
+    Size size,
+    Map<String, double> priceData,
+    double chartHeight,
+    double effectiveChartWidth,
+  ) {
+    if (candles.isEmpty) return;
+
+    final double minPrice = priceData['min']!;
+    final double priceRange = priceData['range']!;
+
+    final CandleStick last = candles.last;
+    final double currentPrice = last.close;
+    final double y =
+        (chartHeight - ((currentPrice - minPrice) / priceRange) * chartHeight)
+            .clamp(0.0, chartHeight);
+
+    // Determine color based on change vs previous close
+    Color lineColor = dojiColor;
+    if (candles.length >= 2) {
+      final prevClose = candles[candles.length - 2].close;
+      if (currentPrice > prevClose) {
+        lineColor = bullishColor;
+      } else if (currentPrice < prevClose) {
+        lineColor = bearishColor;
+      } else {
+        lineColor = dojiColor;
+      }
+    }
+
+    // Draw horizontal price line across effective chart area
+    final Paint linePaint = Paint()
+      ..color = lineColor.withOpacity(0.8)
+      ..strokeWidth = 1.0
+      ..style = PaintingStyle.stroke;
+
+    // Draw dashed line for current price
+    const double dashWidth = 6.0;
+    const double dashGap = 4.0;
+    _drawDashedLine(
+      canvas,
+      Offset(0, y),
+      Offset(effectiveChartWidth, y),
+      linePaint,
+      dashWidth,
+      dashGap,
+    );
+
+    // Draw the price label box on the right price axis area
+    final String priceText = currentPrice.toStringAsFixed(3);
+    final textPainter = TextPainter(textDirection: TextDirection.ltr);
+    textPainter.text = TextSpan(
+      text: priceText,
+      style: labelTextStyle.copyWith(
+        color: Colors.white,
+        fontSize: 11,
+        fontWeight: FontWeight.w600,
+      ),
+    );
+    textPainter.layout();
+
+    // Box dimensions and position within reserved price axis area
+    const double horizontalPadding = 6.0;
+    const double verticalPadding = 3.0;
+    final double boxWidth = textPainter.width + horizontalPadding * 2;
+    final double boxHeight = textPainter.height + verticalPadding * 2;
+    final double boxLeft = size.width - ChartConstants.priceLabelsWidth + 4.0;
+    final double boxTop =
+        (y - boxHeight / 2).clamp(0.0, chartHeight - boxHeight);
+    final Rect rect = Rect.fromLTWH(boxLeft, boxTop, boxWidth, boxHeight);
+
+    // Background uses grid color as base with line color overlay
+    final Paint boxPaint = Paint()
+      ..color = lineColor.withOpacity(0.9)
+      ..style = PaintingStyle.fill;
+
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(rect, const Radius.circular(4.0)),
+      boxPaint,
+    );
+
+    // Border for contrast
+    final Paint borderPaint = Paint()
+      ..color = Colors.black.withOpacity(0.4)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.8;
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(rect, const Radius.circular(4.0)),
+      borderPaint,
+    );
+
+    // Text inside box
+    textPainter.paint(
+      canvas,
+      Offset(rect.left + horizontalPadding, rect.top + verticalPadding),
+    );
+
+    // Small connector from box to the line within price axis area
+    final double connectorStartX = rect.left - 6.0;
+    final Paint connectorPaint = Paint()
+      ..color = lineColor.withOpacity(0.9)
+      ..strokeWidth = 2.0;
+    canvas.drawLine(
+      Offset(connectorStartX, y),
+      Offset(rect.left, y),
+      connectorPaint,
+    );
   }
 
   void _drawSingleCandle(
