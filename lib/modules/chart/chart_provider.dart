@@ -13,7 +13,12 @@ class ChartProvider extends ChangeNotifier {
   List<CandleStick> _allCandles = [];
 
   void setCandles(List<CandleStick> candles) {
+    final bool lengthChanged = _allCandles.length != candles.length;
+    final bool identityChanged = !identical(_allCandles, candles);
     _allCandles = candles;
+    if (lengthChanged || identityChanged) {
+      notifyListeners();
+    }
   }
 
   // Public getters

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../modules/chart/chart.dart';
 import '../../model/candle_model.dart';
 import '../../repository/trading_data_repository.dart';
@@ -6,6 +7,7 @@ import 'widgets/trading_controls.dart';
 import 'widgets/backtesting_controls.dart';
 import 'widgets/price_display_panel.dart';
 import 'widgets/state_widgets.dart';
+import 'bloc/backtest_bloc.dart';
 
 /// Demo page showing how to use the StockChart widget with XAUUSD data
 class BackTestScreen extends StatefulWidget {
@@ -17,9 +19,8 @@ class BackTestScreen extends StatefulWidget {
 
 class _BackTestScreenState extends State<BackTestScreen> {
   final TradingDataRepository _repository = TradingDataRepository();
+  late final BacktestBloc _backtestBloc;
   List<CandleStick>? _xauusdData;
-  bool _isLoading = true;
-  String? _errorMessage;
   Map<String, dynamic>? _metadata;
   double? _previousPrice;
 
@@ -34,55 +35,28 @@ class _BackTestScreenState extends State<BackTestScreen> {
   int _currentEndIndex = 1000;
   List<CandleStick>? _allData; // Keep reference to all data
 
-  // Backtesting state
-  bool _isBacktesting = false;
-  bool _isPlaying = false;
+  // Backtesting state handled by BLoC
 
   @override
   void initState() {
     super.initState();
-    _loadXAUUSDData();
+    _loadMetadata();
+    _backtestBloc = BacktestBloc(_repository)..add(const BacktestInitialized());
   }
 
-  Future<void> _loadXAUUSDData() async {
+  @override
+  void dispose() {
+    _backtestBloc.close();
+    super.dispose();
+  }
+
+  Future<void> _loadMetadata() async {
     try {
-      setState(() {
-        _isLoading = true;
-        _errorMessage = null;
-      });
-
-      // Load metadata first
       final metadata = await _repository.getDataMetadata();
-
-      // Load all data but show a subset initially
-      final allData = await _repository.getAllXAUUSDData();
-
-      // Take a middle chunk of the data to allow scrolling in both directions
-      final totalData = allData.length;
-      final centerIndex = totalData ~/ 2;
-      final halfChunk = 500; // Show 1000 candles initially
-
-      _currentStartIndex = (centerIndex - halfChunk).clamp(0, totalData);
-      _currentEndIndex = (centerIndex + halfChunk).clamp(0, totalData);
-
-      final dataToShow = allData.sublist(_currentStartIndex, _currentEndIndex);
-
       setState(() {
         _metadata = metadata;
-        _allData = allData;
-        // Store previous price before updating
-        if (_xauusdData?.isNotEmpty == true) {
-          _previousPrice = _xauusdData!.last.close;
-        }
-        _xauusdData = dataToShow;
-        _isLoading = false;
       });
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Failed to load XAUUSD data: $e';
-        _isLoading = false;
-      });
-    }
+    } catch (e) {}
   }
 
   /// Load historical data when scrolling to past
@@ -110,7 +84,6 @@ class _BackTestScreenState extends State<BackTestScreen> {
     } catch (e) {
       setState(() {
         _isLoadingPast = false;
-        _errorMessage = 'Error loading past data: $e';
       });
     }
   }
@@ -147,7 +120,6 @@ class _BackTestScreenState extends State<BackTestScreen> {
     } catch (e) {
       setState(() {
         _isLoadingFuture = false;
-        _errorMessage = 'Error loading future data: $e';
       });
     }
   }
@@ -214,55 +186,20 @@ class _BackTestScreenState extends State<BackTestScreen> {
     );
   }
 
-  /// Handle back button for backtesting
-  void _onBacktestBack() {
-    // TODO: Implement back functionality for backtesting
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Back: Previous step'),
-        backgroundColor: Colors.blue,
-        duration: Duration(seconds: 1),
-      ),
-    );
-  }
-
-  /// Handle play/pause button for backtesting
-  void _onBacktestPlayPause() {
-    setState(() {
-      _isPlaying = !_isPlaying;
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content:
-            Text(_isPlaying ? 'Backtesting: Playing' : 'Backtesting: Paused'),
-        backgroundColor: _isPlaying ? Colors.green : Colors.orange,
-        duration: const Duration(seconds: 1),
-      ),
-    );
-  }
-
-  /// Handle next button for backtesting
-  void _onBacktestNext() {
-    // TODO: Implement next functionality for backtesting
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Next: Forward step'),
-        backgroundColor: Colors.blue,
-        duration: Duration(seconds: 1),
-      ),
-    );
-  }
+  // BLoC now handles backtesting actions
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: _buildAppBar(),
-      backgroundColor: Colors.grey[900],
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          return _buildResponsiveLayout(constraints);
-        },
+    return BlocProvider.value(
+      value: _backtestBloc,
+      child: Scaffold(
+        appBar: _buildAppBar(),
+        backgroundColor: Colors.grey[900],
+        body: LayoutBuilder(
+          builder: (context, constraints) {
+            return _buildResponsiveLayout(constraints);
+          },
+        ),
       ),
     );
   }
@@ -426,75 +363,90 @@ class _BackTestScreenState extends State<BackTestScreen> {
   }
 
   Widget _buildChart() {
-    if (_isLoading) {
-      return const LoadingStateWidget(
-        message: 'Loading XAUUSD data...',
-      );
-    }
+    return BlocBuilder<BacktestBloc, BacktestState>(
+      builder: (context, state) {
+        if (state.isLoading) {
+          return const LoadingStateWidget(
+            message: 'Loading XAUUSD data...',
+          );
+        }
 
-    if (_errorMessage != null) {
-      return ErrorStateWidget(
-        errorMessage: _errorMessage!,
-        onRetry: _loadXAUUSDData,
-      );
-    }
+        if (state.errorMessage != null) {
+          return ErrorStateWidget(
+            errorMessage: state.errorMessage!,
+            onRetry: () =>
+                context.read<BacktestBloc>().add(const BacktestInitialized()),
+          );
+        }
 
-    if (_xauusdData == null || _xauusdData!.isEmpty) {
-      return const EmptyStateWidget(
-        message: 'No trading data available',
-        icon: Icons.show_chart,
-      );
-    }
+        if (state.visibleCandles.isEmpty) {
+          return const EmptyStateWidget(
+            message: 'No trading data available',
+            icon: Icons.show_chart,
+          );
+        }
 
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey[700]!),
-        borderRadius: BorderRadius.circular(12),
-        color: Colors.grey[900],
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 6,
-            offset: const Offset(0, 3),
+        return Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey[700]!),
+            borderRadius: BorderRadius.circular(12),
+            color: Colors.grey[900],
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 6,
+                offset: const Offset(0, 3),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: StockChart(
-          candles: _xauusdData!,
-          height: double.infinity,
-          candleWidth: 6,
-          candleSpacing: 1,
-          bullishColor: Colors.greenAccent,
-          bearishColor: Colors.redAccent,
-          backgroundColor: Colors.grey[900]!,
-          gridColor: Colors.grey[700]!,
-          textColor: Colors.white,
-          wickColor: Colors.grey[400]!,
-          showVolume: false,
-          showGrid: true,
-          showPriceLabels: true,
-          showTimeLabels: true,
-          enableInteraction: true,
-          labelTextStyle: const TextStyle(color: Colors.white, fontSize: 10),
-          onLoadPastData: _onLoadPastData,
-          onLoadFutureData: _onLoadFutureData,
-        ),
-      ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: StockChart(
+              candles: state.visibleCandles,
+              height: double.infinity,
+              candleWidth: 6,
+              candleSpacing: 1,
+              bullishColor: Colors.greenAccent,
+              bearishColor: Colors.redAccent,
+              backgroundColor: Colors.grey[900]!,
+              gridColor: Colors.grey[700]!,
+              textColor: Colors.white,
+              wickColor: Colors.grey[400]!,
+              showVolume: false,
+              showGrid: true,
+              showPriceLabels: true,
+              showTimeLabels: true,
+              enableInteraction: true,
+              labelTextStyle:
+                  const TextStyle(color: Colors.white, fontSize: 10),
+              onLoadPastData: _onLoadPastData,
+              onLoadFutureData: _onLoadFutureData,
+              // Use provider-driven rendering to keep interactions working
+              useProvidedCandlesDirectly: false,
+              autoFollowLatest: true,
+              isPlaying: state.isPlaying,
+              futurePaddingCandles: 20,
+            ),
+          ),
+        );
+      },
     );
   }
 
   Widget _buildPricePanel() {
-    final currentPrice =
-        _xauusdData?.isNotEmpty == true ? _xauusdData!.last.close : null;
-
-    return PriceDisplayPanel(
-      currentPrice: currentPrice,
-      previousPrice: _previousPrice,
-      symbol: _metadata?['symbol'] ?? 'XAUUSD',
-      description: _metadata?['description'],
-      isLoading: _isLoading,
+    return BlocBuilder<BacktestBloc, BacktestState>(
+      builder: (context, state) {
+        final currentPrice = state.visibleCandles.isNotEmpty
+            ? state.visibleCandles.last.close
+            : null;
+        return PriceDisplayPanel(
+          currentPrice: currentPrice,
+          previousPrice: _previousPrice,
+          symbol: _metadata?['symbol'] ?? 'XAUUSD',
+          description: _metadata?['description'],
+          isLoading: state.isLoading,
+        );
+      },
     );
   }
 
@@ -517,11 +469,18 @@ class _BackTestScreenState extends State<BackTestScreen> {
   }
 
   Widget _buildBacktestingControlsWidget() {
-    return BacktestingControls(
-      isPlaying: _isPlaying,
-      onBack: _onBacktestBack,
-      onPlayPause: _onBacktestPlayPause,
-      onNext: _onBacktestNext,
+    return BlocBuilder<BacktestBloc, BacktestState>(
+      builder: (context, state) {
+        return BacktestingControls(
+          isPlaying: state.isPlaying,
+          onBack: () =>
+              context.read<BacktestBloc>().add(const BacktestStepBack()),
+          onPlayPause: () =>
+              context.read<BacktestBloc>().add(const BacktestPlayToggled()),
+          onNext: () =>
+              context.read<BacktestBloc>().add(const BacktestStepNext()),
+        );
+      },
     );
   }
 }

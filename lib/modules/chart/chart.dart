@@ -30,6 +30,10 @@ class StockChart extends StatefulWidget {
   final TextStyle? labelTextStyle;
   final VoidCallback? onLoadPastData;
   final VoidCallback? onLoadFutureData;
+  final bool useProvidedCandlesDirectly;
+  final bool autoFollowLatest;
+  final bool isPlaying;
+  final int futurePaddingCandles;
 
   const StockChart({
     Key? key,
@@ -53,6 +57,10 @@ class StockChart extends StatefulWidget {
     this.labelTextStyle,
     this.onLoadPastData,
     this.onLoadFutureData,
+    this.useProvidedCandlesDirectly = false,
+    this.autoFollowLatest = false,
+    this.isPlaying = false,
+    this.futurePaddingCandles = 0,
   }) : super(key: key);
 
   @override
@@ -62,10 +70,13 @@ class StockChart extends StatefulWidget {
 class _StockChartState extends State<StockChart> with TickerProviderStateMixin {
   late AnimationController _momentumController;
   late Animation<double> _momentumAnimation;
+  bool _userInteracted = false;
+  late final ChartProvider _chartProvider;
 
   @override
   void initState() {
     super.initState();
+    _chartProvider = ChartProvider()..setCandles(widget.candles);
     _momentumController = AnimationController(
       duration: const Duration(milliseconds: 100),
       vsync: this,
@@ -77,6 +88,51 @@ class _StockChartState extends State<StockChart> with TickerProviderStateMixin {
       parent: _momentumController,
       curve: Curves.easeOut,
     ));
+  }
+
+  @override
+  void didUpdateWidget(covariant StockChart oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final bool candlesIdentityChanged =
+        !identical(oldWidget.candles, widget.candles);
+    final bool candlesLengthChanged =
+        oldWidget.candles.length != widget.candles.length;
+    // Reset user interaction lock when (re)starting play
+    if (oldWidget.isPlaying != widget.isPlaying && widget.isPlaying) {
+      _userInteracted = false;
+    }
+    if (candlesIdentityChanged || candlesLengthChanged) {
+      try {
+        _chartProvider.setCandles(widget.candles);
+        // Auto follow latest candle when new candle appears
+        if (widget.autoFollowLatest &&
+            widget.isPlaying &&
+            !_userInteracted &&
+            widget.candles.isNotEmpty &&
+            candlesLengthChanged) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            final layoutBuilder = context.findRenderObject() as RenderBox?;
+            if (layoutBuilder != null) {
+              final fullChartWidth = layoutBuilder.size.width;
+              final effectiveChartWidth = fullChartWidth -
+                  (widget.showPriceLabels
+                      ? ChartConstants.priceLabelsWidth
+                      : 0.0);
+              final targetIndex = widget.candles.length - 1;
+              _chartProvider.scrollToIndex(
+                targetIndex,
+                widget.candles.length + widget.futurePaddingCandles,
+                effectiveChartWidth,
+                widget.candleWidth,
+                widget.candleSpacing,
+              );
+            }
+          });
+        }
+      } catch (_) {
+        // Provider might not be available yet in rare rebuild orders; ignore
+      }
+    }
   }
 
   @override
@@ -100,8 +156,8 @@ class _StockChartState extends State<StockChart> with TickerProviderStateMixin {
       );
     }
 
-    return ChangeNotifierProvider(
-      create: (context) => ChartProvider()..setCandles(widget.candles),
+    return ChangeNotifierProvider<ChartProvider>.value(
+      value: _chartProvider,
       child: Container(
         height: widget.height,
         color: widget.backgroundColor,
@@ -116,6 +172,38 @@ class _StockChartState extends State<StockChart> with TickerProviderStateMixin {
   }
 
   Widget _buildChart(double chartWidth) {
+    if (widget.useProvidedCandlesDirectly) {
+      // Bypass provider visibility logic: render all provided candles as-is
+      return Container(
+        height: widget.height,
+        color: widget.backgroundColor,
+        child: CustomPaint(
+          size: Size(chartWidth, widget.height),
+          painter: StockChartPainter(
+            candles: widget.candles,
+            candleWidth: widget.candleWidth,
+            candleSpacing: widget.candleSpacing,
+            timeScale: 1.0,
+            priceScale: 1.0,
+            chartWidth: chartWidth,
+            bullishColor: widget.bullishColor,
+            bearishColor: widget.bearishColor,
+            dojiColor: widget.dojiColor,
+            wickColor: widget.wickColor,
+            gridColor: widget.gridColor,
+            textColor: widget.textColor,
+            showGrid: widget.showGrid,
+            showVolume: widget.showVolume,
+            showPriceLabels: widget.showPriceLabels,
+            showTimeLabels: widget.showTimeLabels,
+            volumeHeightRatio: widget.volumeHeightRatio,
+            labelTextStyle: widget.labelTextStyle ??
+                TextStyle(color: widget.textColor, fontSize: 10),
+          ),
+        ),
+      );
+    }
+
     return Consumer<ChartProvider>(
       builder: (context, chartProvider, child) {
         // Add momentum animation listener
@@ -129,7 +217,7 @@ class _StockChartState extends State<StockChart> with TickerProviderStateMixin {
                       ? ChartConstants.priceLabelsWidth
                       : 0.0);
               chartProvider.applyMomentum(
-                widget.candles.length,
+                widget.candles.length + widget.futurePaddingCandles,
                 effectiveChartWidth,
                 widget.candleWidth,
                 widget.candleSpacing,
@@ -163,6 +251,7 @@ class _StockChartState extends State<StockChart> with TickerProviderStateMixin {
         void onScaleUpdate(ScaleUpdateDetails details) {
           if (details.scale == 1.0 && details.focalPointDelta != Offset.zero) {
             // This is a pan gesture, handle horizontal scrolling
+            _userInteracted = true;
             final layoutBuilder = context.findRenderObject() as RenderBox?;
             if (layoutBuilder != null) {
               final fullChartWidth = layoutBuilder.size.width;
@@ -172,7 +261,7 @@ class _StockChartState extends State<StockChart> with TickerProviderStateMixin {
                       : 0.0);
               chartProvider.updateScrollOffset(
                 details.focalPointDelta.dx,
-                widget.candles.length,
+                widget.candles.length + widget.futurePaddingCandles,
                 effectiveChartWidth,
                 widget.candleWidth,
                 widget.candleSpacing,
@@ -189,6 +278,7 @@ class _StockChartState extends State<StockChart> with TickerProviderStateMixin {
             }
           } else if (details.scale != 1.0) {
             // This is a scale gesture - handle zoom with focal point preservation
+            _userInteracted = true;
             // Calculate effective chart width for proper focal point calculation
             final layoutBuilder = context.findRenderObject() as RenderBox?;
             if (layoutBuilder != null) {
