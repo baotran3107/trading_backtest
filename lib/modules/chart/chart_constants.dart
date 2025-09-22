@@ -14,7 +14,7 @@ class ChartConstants {
   // UI dimensions
   static const double priceLabelsWidth = 80.0;
   static const double timeLabelsHeight = 30.0;
-  static const double gridLinesCount = 8;
+  static const double gridLinesCount = 12;
 
   // Colors
   static const int defaultBackgroundColor = 0xFF1E2328;

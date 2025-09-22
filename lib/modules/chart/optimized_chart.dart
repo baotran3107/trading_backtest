@@ -237,24 +237,7 @@ class _OptimizedStockChartState extends State<OptimizedStockChart>
           chartProvider.updateHorizontalScale(scaleFactor);
         }
 
-        void onHover(PointerHoverEvent event) {
-          final RenderBox renderBox = context.findRenderObject() as RenderBox;
-          final localPosition = renderBox.globalToLocal(event.position);
-
-          final hoveredCandle = chartProvider.getCandleAtPosition(
-            chartProvider.candles,
-            localPosition.dx,
-            baseCandleWidth,
-            baseCandleSpacing,
-            chartProvider.visibleStartIndex,
-          );
-
-          chartProvider.setHover(hoveredCandle, localPosition);
-        }
-
-        void onHoverExit(PointerExitEvent event) {
-          chartProvider.clearHover();
-        }
+        // Hover-to-candle tooltip removed per requirement
 
         return Stack(
           children: [
@@ -263,8 +246,8 @@ class _OptimizedStockChartState extends State<OptimizedStockChart>
               onPointerSignal:
                   widget.enableInteraction ? _onPointerSignal : null,
               child: MouseRegion(
-                onHover: widget.enableInteraction ? onHover : null,
-                onExit: widget.enableInteraction ? onHoverExit : null,
+                onHover: null,
+                onExit: null,
                 child: widget.enableInteraction
                     ? GestureDetector(
                         onScaleStart: onScaleStart,
@@ -294,8 +277,6 @@ class _OptimizedStockChartState extends State<OptimizedStockChart>
                             labelTextStyle: widget.labelTextStyle ??
                                 TextStyle(
                                     color: widget.textColor, fontSize: 10),
-                            hoveredCandle: chartProvider.hoveredCandle,
-                            hoverPosition: chartProvider.hoverPosition,
                           ),
                         ),
                       )
@@ -321,8 +302,6 @@ class _OptimizedStockChartState extends State<OptimizedStockChart>
                           volumeHeightRatio: widget.volumeHeightRatio,
                           labelTextStyle: widget.labelTextStyle ??
                               TextStyle(color: widget.textColor, fontSize: 10),
-                          hoveredCandle: chartProvider.hoveredCandle,
-                          hoverPosition: chartProvider.hoverPosition,
                         ),
                       ),
               ),

@@ -22,8 +22,6 @@ class StockChartPainter extends CustomPainter {
   final bool showTimeLabels;
   final double volumeHeightRatio;
   final TextStyle labelTextStyle;
-  final CandleStick? hoveredCandle;
-  final Offset? hoverPosition;
 
   StockChartPainter({
     required this.candles,
@@ -44,8 +42,6 @@ class StockChartPainter extends CustomPainter {
     required this.showTimeLabels,
     required this.volumeHeightRatio,
     required this.labelTextStyle,
-    this.hoveredCandle,
-    this.hoverPosition,
   });
 
   @override
@@ -84,10 +80,7 @@ class StockChartPainter extends CustomPainter {
       _drawTimeLabels(canvas, size, effectiveChartWidth);
     }
 
-    // Draw hover tooltip (on top of everything)
-    if (hoveredCandle != null && hoverPosition != null) {
-      _drawHoverTooltip(canvas, size);
-    }
+    // Tooltip removed per requirement: no hover-to-candle tooltip rendering
   }
 
   Map<String, double> _calculatePriceRange() {
@@ -128,17 +121,23 @@ class StockChartPainter extends CustomPainter {
   void _drawGrid(Canvas canvas, Size size, double priceChartHeight,
       double effectiveChartWidth) {
     final gridPaint = Paint()
-      ..color = gridColor
+      ..color = gridColor.withOpacity(0.4)
       ..strokeWidth = 1.0
       ..style = PaintingStyle.stroke;
+
+    const double dashWidth = 6.0;
+    const double dashGap = 4.0;
 
     // Horizontal grid lines for price chart
     for (int i = 0; i <= ChartConstants.gridLinesCount; i++) {
       final y = (priceChartHeight / ChartConstants.gridLinesCount) * i;
-      canvas.drawLine(
+      _drawDashedLine(
+        canvas,
         Offset(0, y),
         Offset(effectiveChartWidth, y),
         gridPaint,
+        dashWidth,
+        dashGap,
       );
     }
 
@@ -155,11 +154,34 @@ class StockChartPainter extends CustomPainter {
     final actualGridSpacing = gridSpacing.clamp(minGridSpacing, maxGridSpacing);
 
     for (double x = 0; x <= effectiveChartWidth; x += actualGridSpacing) {
-      canvas.drawLine(
+      _drawDashedLine(
+        canvas,
         Offset(x, 0),
         Offset(x, size.height),
         gridPaint,
+        dashWidth,
+        dashGap,
       );
+    }
+  }
+
+  void _drawDashedLine(
+    Canvas canvas,
+    Offset start,
+    Offset end,
+    Paint paint,
+    double dashWidth,
+    double dashGap,
+  ) {
+    final double totalLength = (end - start).distance;
+    final Offset direction = (end - start) / totalLength;
+    double current = 0.0;
+    while (current < totalLength) {
+      final double next = (current + dashWidth).clamp(0.0, totalLength);
+      final Offset p1 = start + direction * current;
+      final Offset p2 = start + direction * next;
+      canvas.drawLine(p1, p2, paint);
+      current = next + dashGap;
     }
   }
 
@@ -381,87 +403,6 @@ class StockChartPainter extends CustomPainter {
         canvas.drawRect(rect, paint);
       }
     }
-  }
-
-  void _drawHoverTooltip(Canvas canvas, Size size) {
-    if (hoveredCandle == null || hoverPosition == null) return;
-
-    final textPainter = TextPainter(textDirection: TextDirection.ltr);
-    final tooltipPaint = Paint()
-      ..color = const Color(ChartConstants.defaultGridColor)
-      ..style = PaintingStyle.fill;
-
-    final borderPaint = Paint()
-      ..color = gridColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1;
-
-    // Tooltip content - formatted like trading apps
-    final tooltipText = '''
-Time: ${hoveredCandle!.time.day}/${hoveredCandle!.time.month}/${hoveredCandle!.time.year}
-O: ${hoveredCandle!.open.toStringAsFixed(3)}
-H: ${hoveredCandle!.high.toStringAsFixed(3)}
-L: ${hoveredCandle!.low.toStringAsFixed(3)}
-C: ${hoveredCandle!.close.toStringAsFixed(3)}
-Vol: ${hoveredCandle!.volume.toStringAsFixed(0)}
-''';
-
-    textPainter.text = TextSpan(
-      text: tooltipText,
-      style: TextStyle(
-        color: textColor,
-        fontSize: 11,
-        fontWeight: FontWeight.w500,
-        fontFamily: 'monospace',
-      ),
-    );
-    textPainter.layout();
-
-    // Position tooltip
-    final tooltipWidth = textPainter.width + ChartConstants.tooltipPadding * 2;
-    final tooltipHeight =
-        textPainter.height + ChartConstants.tooltipPadding * 2;
-
-    double tooltipX = hoverPosition!.dx + ChartConstants.tooltipOffset;
-    double tooltipY =
-        hoverPosition!.dy - tooltipHeight - ChartConstants.tooltipOffset;
-
-    // Adjust position if tooltip goes off screen
-    if (tooltipX + tooltipWidth > size.width) {
-      tooltipX =
-          hoverPosition!.dx - tooltipWidth - ChartConstants.tooltipOffset;
-    }
-    if (tooltipY < 0) {
-      tooltipY = hoverPosition!.dy + ChartConstants.tooltipOffset;
-    }
-
-    // Draw tooltip background with shadow effect
-    final shadowRect =
-        Rect.fromLTWH(tooltipX + 2, tooltipY + 2, tooltipWidth, tooltipHeight);
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(shadowRect,
-          const Radius.circular(ChartConstants.tooltipBorderRadius)),
-      Paint()..color = Colors.black.withOpacity(0.3),
-    );
-
-    final tooltipRect =
-        Rect.fromLTWH(tooltipX, tooltipY, tooltipWidth, tooltipHeight);
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(tooltipRect,
-          const Radius.circular(ChartConstants.tooltipBorderRadius)),
-      tooltipPaint,
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(tooltipRect,
-          const Radius.circular(ChartConstants.tooltipBorderRadius)),
-      borderPaint,
-    );
-
-    // Draw tooltip text
-    textPainter.paint(
-        canvas,
-        Offset(tooltipX + ChartConstants.tooltipPadding,
-            tooltipY + ChartConstants.tooltipPadding));
   }
 
   @override
