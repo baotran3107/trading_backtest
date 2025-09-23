@@ -267,8 +267,11 @@ class StockChartPainter extends CustomPainter {
 
       final time = candles[i].time;
 
+      // For 1-minute timeframe, show time labels as HH:mm instead of MM/DD
+      final String hh = time.hour.toString().padLeft(2, '0');
+      final String mm = time.minute.toString().padLeft(2, '0');
       textPainter.text = TextSpan(
-        text: '${time.month}/${time.day}',
+        text: '$hh:$mm',
         style: labelTextStyle.copyWith(
           color: textColor,
           fontSize: 10,
