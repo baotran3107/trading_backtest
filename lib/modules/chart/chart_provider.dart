@@ -361,9 +361,11 @@ class ChartProvider extends ChangeNotifier {
     final candleUnitWidth = ChartUtils.calculateCandleUnitWidth(
         candleWidth, candleSpacing, _scaleState.timeScale);
     final maxVisibleCandles = (chartWidth / candleUnitWidth).floor();
+    final maxStartIndex = totalDataLength - maxVisibleCandles;
+    final safeMaxStartIndex = maxStartIndex < 0 ? 0 : maxStartIndex;
     final centerStartIndex = ((totalDataLength - maxVisibleCandles) / 2)
         .floor()
-        .clamp(0, totalDataLength - maxVisibleCandles);
+        .clamp(0, safeMaxStartIndex);
 
     _scrollState.scrollOffset = centerStartIndex * candleUnitWidth;
     _scrollState.visibleStartIndex = centerStartIndex;
@@ -385,9 +387,12 @@ class ChartProvider extends ChangeNotifier {
     final candleUnitWidth = ChartUtils.calculateCandleUnitWidth(
         candleWidth, candleSpacing, _scaleState.timeScale);
     final maxVisibleCandles = (chartWidth / candleUnitWidth).floor();
+    // Prevent negative upper bound for clamp when the view can show more candles than data
+    final maxStartIndex = totalDataLength - maxVisibleCandles;
+    final safeMaxStartIndex = maxStartIndex < 0 ? 0 : maxStartIndex;
     final centerIndex = (targetIndex - maxVisibleCandles / 2)
         .floor()
-        .clamp(0, totalDataLength - maxVisibleCandles);
+        .clamp(0, safeMaxStartIndex);
 
     _scrollState.scrollOffset = centerIndex * candleUnitWidth;
     _scrollState.visibleStartIndex = centerIndex;

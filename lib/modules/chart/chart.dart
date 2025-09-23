@@ -104,9 +104,9 @@ class _StockChartState extends State<StockChart> with TickerProviderStateMixin {
     if (candlesIdentityChanged || candlesLengthChanged) {
       try {
         _chartProvider.setCandles(widget.candles);
-        // Auto follow latest candle when new candle appears
+        // Auto follow latest candle when new candle appears (even when not playing),
+        // unless the user has interacted (panned/zoomed)
         if (widget.autoFollowLatest &&
-            widget.isPlaying &&
             !_userInteracted &&
             widget.candles.isNotEmpty &&
             candlesLengthChanged) {
