@@ -22,6 +22,8 @@ class StockChartPainter extends CustomPainter {
   final bool showTimeLabels;
   final double volumeHeightRatio;
   final TextStyle labelTextStyle;
+  final List<double> buyEntryPrices;
+  final List<double> sellEntryPrices;
 
   StockChartPainter({
     required this.candles,
@@ -42,6 +44,8 @@ class StockChartPainter extends CustomPainter {
     required this.showTimeLabels,
     required this.volumeHeightRatio,
     required this.labelTextStyle,
+    this.buyEntryPrices = const [],
+    this.sellEntryPrices = const [],
   });
 
   @override
@@ -84,7 +88,89 @@ class StockChartPainter extends CustomPainter {
     _drawCurrentPrice(
         canvas, size, priceData, effectiveChartHeight, effectiveChartWidth);
 
+    // Draw order entry lines on top
+    _drawOrderEntryLines(
+        canvas, size, priceData, effectiveChartHeight, effectiveChartWidth);
+
     // Tooltip removed per requirement: no hover-to-candle tooltip rendering
+  }
+
+  void _drawOrderEntryLines(
+    Canvas canvas,
+    Size size,
+    Map<String, double> priceData,
+    double chartHeight,
+    double effectiveChartWidth,
+  ) {
+    if (candles.isEmpty) return;
+
+    final double minPrice = priceData['min']!;
+    final double priceRange = priceData['range']!;
+
+    void drawLine(double price, Color color) {
+      final double y =
+          (chartHeight - ((price - minPrice) / priceRange) * chartHeight)
+              .clamp(0.0, chartHeight);
+
+      final Paint linePaint = Paint()
+        ..color = color.withOpacity(0.9)
+        ..strokeWidth = 1.2
+        ..style = PaintingStyle.stroke;
+
+      // Solid line across effective chart area
+      canvas.drawLine(Offset(0, y), Offset(effectiveChartWidth, y), linePaint);
+
+      // Label box with side + price on the right price axis area
+      final textPainter = TextPainter(textDirection: TextDirection.ltr);
+      final String text =
+          '${color == bullishColor ? 'BUY' : 'SELL'} ${price.toStringAsFixed(3)}';
+      textPainter.text = TextSpan(
+        text: text,
+        style: labelTextStyle.copyWith(
+          color: Colors.white,
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+        ),
+      );
+      textPainter.layout();
+
+      const double hPad = 6.0;
+      const double vPad = 3.0;
+      final double boxWidth = textPainter.width + hPad * 2;
+      final double boxHeight = textPainter.height + vPad * 2;
+      final double boxLeft = size.width - ChartConstants.priceLabelsWidth + 4.0;
+      final double boxTop =
+          (y - boxHeight / 2).clamp(0.0, chartHeight - boxHeight);
+      final Rect rect = Rect.fromLTWH(boxLeft, boxTop, boxWidth, boxHeight);
+
+      // Background with entry color
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(rect, const Radius.circular(4.0)),
+        Paint()..color = color.withOpacity(0.95),
+      );
+
+      // Thin border for contrast
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(rect, const Radius.circular(4.0)),
+        Paint()
+          ..color = Colors.black.withOpacity(0.4)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 0.8,
+      );
+
+      // Text inside box
+      textPainter.paint(
+        canvas,
+        Offset(rect.left + hPad, rect.top + vPad),
+      );
+    }
+
+    for (final p in buyEntryPrices) {
+      drawLine(p, bullishColor);
+    }
+    for (final p in sellEntryPrices) {
+      drawLine(p, bearishColor);
+    }
   }
 
   Map<String, double> _calculatePriceRange() {

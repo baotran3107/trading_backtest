@@ -34,6 +34,8 @@ class StockChart extends StatefulWidget {
   final bool autoFollowLatest;
   final bool isPlaying;
   final int futurePaddingCandles;
+  final List<double> buyEntryPrices;
+  final List<double> sellEntryPrices;
 
   const StockChart({
     Key? key,
@@ -61,6 +63,8 @@ class StockChart extends StatefulWidget {
     this.autoFollowLatest = false,
     this.isPlaying = false,
     this.futurePaddingCandles = 0,
+    this.buyEntryPrices = const [],
+    this.sellEntryPrices = const [],
   }) : super(key: key);
 
   @override
@@ -199,6 +203,8 @@ class _StockChartState extends State<StockChart> with TickerProviderStateMixin {
             volumeHeightRatio: widget.volumeHeightRatio,
             labelTextStyle: widget.labelTextStyle ??
                 TextStyle(color: widget.textColor, fontSize: 10),
+            buyEntryPrices: widget.buyEntryPrices,
+            sellEntryPrices: widget.sellEntryPrices,
           ),
         ),
       );
@@ -381,6 +387,8 @@ class _StockChartState extends State<StockChart> with TickerProviderStateMixin {
                             labelTextStyle: widget.labelTextStyle ??
                                 TextStyle(
                                     color: widget.textColor, fontSize: 10),
+                            buyEntryPrices: widget.buyEntryPrices,
+                            sellEntryPrices: widget.sellEntryPrices,
                           ),
                         ),
                       )
@@ -406,6 +414,8 @@ class _StockChartState extends State<StockChart> with TickerProviderStateMixin {
                           volumeHeightRatio: widget.volumeHeightRatio,
                           labelTextStyle: widget.labelTextStyle ??
                               TextStyle(color: widget.textColor, fontSize: 10),
+                          buyEntryPrices: widget.buyEntryPrices,
+                          sellEntryPrices: widget.sellEntryPrices,
                         ),
                       ),
               ),

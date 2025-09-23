@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'presentations/backtest_screen/backtest_screen.dart';
 import 'presentations/data_import_example/data_import_example.dart';
+import 'repository/trading_data_repository.dart';
+import 'presentations/backtest_screen/bloc/backtest_bloc.dart';
 
 void main() {
   runApp(const MyApp());
@@ -13,13 +16,29 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     print('app startedd');
 
-    return MaterialApp(
-      title: 'Trading Game',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
+    return MultiRepositoryProvider(
+      providers: [
+        RepositoryProvider<TradingDataRepository>(
+          create: (_) => TradingDataRepository(),
+        ),
+      ],
+      child: MultiBlocProvider(
+        providers: [
+          BlocProvider<BacktestBloc>(
+            create: (context) => BacktestBloc(
+              context.read<TradingDataRepository>(),
+            )..add(const BacktestInitialized()),
+          ),
+        ],
+        child: MaterialApp(
+          title: 'Trading Game',
+          theme: ThemeData(
+            colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+            useMaterial3: true,
+          ),
+          home: const MainMenu(),
+        ),
       ),
-      home: const MainMenu(),
     );
   }
 }

@@ -19,7 +19,6 @@ class BackTestScreen extends StatefulWidget {
 
 class _BackTestScreenState extends State<BackTestScreen> {
   final TradingDataRepository _repository = TradingDataRepository();
-  late final BacktestBloc _backtestBloc;
   List<CandleStick>? _xauusdData;
   Map<String, dynamic>? _metadata;
   double? _previousPrice;
@@ -35,18 +34,20 @@ class _BackTestScreenState extends State<BackTestScreen> {
   int _currentEndIndex = 1000;
   List<CandleStick>? _allData; // Keep reference to all data
 
+  // Order entry tracking for display
+  final List<double> _buyEntries = [];
+  final List<double> _sellEntries = [];
+
   // Backtesting state handled by BLoC
 
   @override
   void initState() {
     super.initState();
     _loadMetadata();
-    _backtestBloc = BacktestBloc(_repository)..add(const BacktestInitialized());
   }
 
   @override
   void dispose() {
-    _backtestBloc.close();
     super.dispose();
   }
 
@@ -126,10 +127,16 @@ class _BackTestScreenState extends State<BackTestScreen> {
 
   /// Handle buy action
   void _onBuy() {
-    // TODO: Implement buy logic
+    final price = _currentVisiblePrice();
+    if (price != null) {
+      setState(() {
+        _buyEntries.add(price);
+      });
+    }
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Buy order placed: $_lotSize lots'),
+        content:
+            Text('Buy @ ${price?.toStringAsFixed(3) ?? '-'} · $_lotSize lots'),
         backgroundColor: Colors.green,
       ),
     );
@@ -137,13 +144,31 @@ class _BackTestScreenState extends State<BackTestScreen> {
 
   /// Handle sell action
   void _onSell() {
-    // TODO: Implement sell logic
+    final price = _currentVisiblePrice();
+    if (price != null) {
+      setState(() {
+        _sellEntries.add(price);
+      });
+    }
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Sell order placed: $_lotSize lots'),
+        content:
+            Text('Sell @ ${price?.toStringAsFixed(3) ?? '-'} · $_lotSize lots'),
         backgroundColor: Colors.red,
       ),
     );
+  }
+
+  double? _currentVisiblePrice() {
+    final ctx = context;
+    final blocState = ctx.read<BacktestBloc>().state;
+    if (blocState.visibleCandles.isNotEmpty) {
+      return blocState.visibleCandles.last.close;
+    }
+    if (_xauusdData?.isNotEmpty == true) {
+      return _xauusdData!.last.close;
+    }
+    return null;
   }
 
   /// Show indicator selection dialog
@@ -190,16 +215,13 @@ class _BackTestScreenState extends State<BackTestScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider.value(
-      value: _backtestBloc,
-      child: Scaffold(
-        appBar: _buildAppBar(),
-        backgroundColor: Colors.grey[900],
-        body: LayoutBuilder(
-          builder: (context, constraints) {
-            return _buildResponsiveLayout(constraints);
-          },
-        ),
+    return Scaffold(
+      appBar: _buildAppBar(),
+      backgroundColor: Colors.grey[900],
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          return _buildResponsiveLayout(constraints);
+        },
       ),
     );
   }
@@ -426,6 +448,8 @@ class _BackTestScreenState extends State<BackTestScreen> {
               autoFollowLatest: true,
               isPlaying: state.isPlaying,
               futurePaddingCandles: 20,
+              buyEntryPrices: _buyEntries,
+              sellEntryPrices: _sellEntries,
             ),
           ),
         );
