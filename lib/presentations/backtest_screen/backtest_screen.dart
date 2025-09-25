@@ -37,6 +37,8 @@ class _BackTestScreenState extends State<BackTestScreen> {
   // Order entry tracking for display
   final List<double> _buyEntries = [];
   final List<double> _sellEntries = [];
+  final List<double> _stopLossPrices = [];
+  final List<double> _takeProfitPrices = [];
 
   // Backtesting state handled by BLoC
 
@@ -131,6 +133,9 @@ class _BackTestScreenState extends State<BackTestScreen> {
     if (price != null) {
       setState(() {
         _buyEntries.add(price);
+        // Auto SL/TP: example offsets for XAUUSD
+        _stopLossPrices.add(price - 1.0);
+        _takeProfitPrices.add(price + 2.0);
       });
     }
     ScaffoldMessenger.of(context).showSnackBar(
@@ -148,6 +153,9 @@ class _BackTestScreenState extends State<BackTestScreen> {
     if (price != null) {
       setState(() {
         _sellEntries.add(price);
+        // Auto SL/TP for sell
+        _stopLossPrices.add(price + 1.0);
+        _takeProfitPrices.add(price - 2.0);
       });
     }
     ScaffoldMessenger.of(context).showSnackBar(
@@ -450,6 +458,22 @@ class _BackTestScreenState extends State<BackTestScreen> {
               futurePaddingCandles: 20,
               buyEntryPrices: _buyEntries,
               sellEntryPrices: _sellEntries,
+              stopLossPrices: _stopLossPrices,
+              takeProfitPrices: _takeProfitPrices,
+              onStopLossPricesChanged: (updated) {
+                setState(() {
+                  _stopLossPrices
+                    ..clear()
+                    ..addAll(updated);
+                });
+              },
+              onTakeProfitPricesChanged: (updated) {
+                setState(() {
+                  _takeProfitPrices
+                    ..clear()
+                    ..addAll(updated);
+                });
+              },
             ),
           ),
         );

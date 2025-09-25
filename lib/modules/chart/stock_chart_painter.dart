@@ -24,6 +24,8 @@ class StockChartPainter extends CustomPainter {
   final TextStyle labelTextStyle;
   final List<double> buyEntryPrices;
   final List<double> sellEntryPrices;
+  final List<double> stopLossPrices;
+  final List<double> takeProfitPrices;
 
   StockChartPainter({
     required this.candles,
@@ -46,6 +48,8 @@ class StockChartPainter extends CustomPainter {
     required this.labelTextStyle,
     this.buyEntryPrices = const [],
     this.sellEntryPrices = const [],
+    this.stopLossPrices = const [],
+    this.takeProfitPrices = const [],
   });
 
   @override
@@ -90,6 +94,10 @@ class StockChartPainter extends CustomPainter {
 
     // Draw order entry lines on top
     _drawOrderEntryLines(
+        canvas, size, priceData, effectiveChartHeight, effectiveChartWidth);
+
+    // Draw SL/TP lines
+    _drawRiskManagementLines(
         canvas, size, priceData, effectiveChartHeight, effectiveChartWidth);
 
     // Tooltip removed per requirement: no hover-to-candle tooltip rendering
@@ -170,6 +178,75 @@ class StockChartPainter extends CustomPainter {
     }
     for (final p in sellEntryPrices) {
       drawLine(p, bearishColor);
+    }
+  }
+
+  void _drawRiskManagementLines(
+    Canvas canvas,
+    Size size,
+    Map<String, double> priceData,
+    double chartHeight,
+    double effectiveChartWidth,
+  ) {
+    if (candles.isEmpty) return;
+
+    final double minPrice = priceData['min']!;
+    final double priceRange = priceData['range']!;
+
+    void drawLine(double price, Color color, String label) {
+      final double y =
+          (chartHeight - ((price - minPrice) / priceRange) * chartHeight)
+              .clamp(0.0, chartHeight);
+
+      final Paint linePaint = Paint()
+        ..color = color.withOpacity(0.9)
+        ..strokeWidth = 1.2
+        ..style = PaintingStyle.stroke;
+
+      canvas.drawLine(Offset(0, y), Offset(effectiveChartWidth, y), linePaint);
+
+      final textPainter = TextPainter(textDirection: TextDirection.ltr);
+      textPainter.text = TextSpan(
+        text: '$label ${price.toStringAsFixed(3)}',
+        style: labelTextStyle.copyWith(
+          color: Colors.white,
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+        ),
+      );
+      textPainter.layout();
+
+      const double hPad = 6.0;
+      const double vPad = 3.0;
+      final double boxWidth = textPainter.width + hPad * 2;
+      final double boxHeight = textPainter.height + vPad * 2;
+      final double boxLeft = size.width - ChartConstants.priceLabelsWidth + 4.0;
+      final double boxTop =
+          (y - boxHeight / 2).clamp(0.0, chartHeight - boxHeight);
+      final Rect rect = Rect.fromLTWH(boxLeft, boxTop, boxWidth, boxHeight);
+
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(rect, const Radius.circular(4.0)),
+        Paint()..color = color.withOpacity(0.95),
+      );
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(rect, const Radius.circular(4.0)),
+        Paint()
+          ..color = Colors.black.withOpacity(0.4)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 0.8,
+      );
+      textPainter.paint(
+        canvas,
+        Offset(boxLeft + hPad, boxTop + vPad),
+      );
+    }
+
+    for (final sl in stopLossPrices) {
+      drawLine(sl, Colors.orange, 'SL');
+    }
+    for (final tp in takeProfitPrices) {
+      drawLine(tp, Colors.blue, 'TP');
     }
   }
 

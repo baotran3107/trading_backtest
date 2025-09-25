@@ -8,6 +8,8 @@ import 'chart_constants.dart';
 import 'stock_chart_painter.dart';
 import 'optimized_chart.dart';
 
+enum _DragType { none, sl, tp }
+
 /// A comprehensive stock chart widget that displays candlestick data with advanced features
 class StockChart extends StatefulWidget {
   final List<CandleStick> candles;
@@ -36,6 +38,10 @@ class StockChart extends StatefulWidget {
   final int futurePaddingCandles;
   final List<double> buyEntryPrices;
   final List<double> sellEntryPrices;
+  final List<double> stopLossPrices;
+  final List<double> takeProfitPrices;
+  final ValueChanged<List<double>>? onStopLossPricesChanged;
+  final ValueChanged<List<double>>? onTakeProfitPricesChanged;
 
   const StockChart({
     Key? key,
@@ -65,6 +71,10 @@ class StockChart extends StatefulWidget {
     this.futurePaddingCandles = 0,
     this.buyEntryPrices = const [],
     this.sellEntryPrices = const [],
+    this.stopLossPrices = const [],
+    this.takeProfitPrices = const [],
+    this.onStopLossPricesChanged,
+    this.onTakeProfitPricesChanged,
   }) : super(key: key);
 
   @override
@@ -76,6 +86,7 @@ class _StockChartState extends State<StockChart> with TickerProviderStateMixin {
   late Animation<double> _momentumAnimation;
   bool _userInteracted = false;
   late final ChartProvider _chartProvider;
+  bool _isDraggingLine = false;
 
   @override
   void initState() {
@@ -205,6 +216,8 @@ class _StockChartState extends State<StockChart> with TickerProviderStateMixin {
                 TextStyle(color: widget.textColor, fontSize: 10),
             buyEntryPrices: widget.buyEntryPrices,
             sellEntryPrices: widget.sellEntryPrices,
+            stopLossPrices: widget.stopLossPrices,
+            takeProfitPrices: widget.takeProfitPrices,
           ),
         ),
       );
@@ -250,11 +263,118 @@ class _StockChartState extends State<StockChart> with TickerProviderStateMixin {
 
         // Define gesture handlers within the Consumer context
         void onScaleStart(ScaleStartDetails details) {
+          // Detect line-drag start near SL/TP lines
+          final layoutBox = context.findRenderObject() as RenderBox?;
+          if (layoutBox != null) {
+            final local = layoutBox.globalToLocal(details.focalPoint);
+            final containerHeight = layoutBox.size.height;
+            final chartHeight = containerHeight -
+                (widget.showTimeLabels ? ChartConstants.timeLabelsHeight : 0.0);
+            if (local.dy >= 0 && local.dy <= chartHeight) {
+              // compute price mapping like painter
+              double minPrice = visibleCandles.first.low;
+              double maxPrice = visibleCandles.first.high;
+              for (final c in visibleCandles) {
+                if (c.low < minPrice) minPrice = c.low;
+                if (c.high > maxPrice) maxPrice = c.high;
+              }
+              final baseRange = maxPrice - minPrice;
+              final basePadding = baseRange * ChartConstants.basePadding;
+              final paddedMinPrice = minPrice - basePadding;
+              final paddedMaxPrice = maxPrice + basePadding;
+              final paddedRange = paddedMaxPrice - paddedMinPrice;
+              final center = (paddedMinPrice + paddedMaxPrice) / 2;
+              final scaledRange = paddedRange / chartProvider.priceScale;
+              final minVisibleRange =
+                  baseRange * ChartConstants.minVisibleRange;
+              final constrainedRange = scaledRange.clamp(minVisibleRange,
+                  paddedRange * ChartConstants.maxVisibleRange);
+              final scaledMinPrice = center - (constrainedRange / 2);
+
+              double priceToY(double price) {
+                return (chartHeight -
+                        ((price - scaledMinPrice) / constrainedRange) *
+                            chartHeight)
+                    .clamp(0.0, chartHeight);
+              }
+
+              const tolerance = 10.0;
+              for (int i = 0; i < widget.stopLossPrices.length; i++) {
+                final ly = priceToY(widget.stopLossPrices[i]);
+                if ((ly - local.dy).abs() <= tolerance) {
+                  _dragType = _DragType.sl;
+                  _dragIndex = i;
+                  _isDraggingLine = true;
+                  return;
+                }
+              }
+              for (int i = 0; i < widget.takeProfitPrices.length; i++) {
+                final ly = priceToY(widget.takeProfitPrices[i]);
+                if ((ly - local.dy).abs() <= tolerance) {
+                  _dragType = _DragType.tp;
+                  _dragIndex = i;
+                  _isDraggingLine = true;
+                  return;
+                }
+              }
+            }
+          }
+          // Otherwise start normal chart interaction
           chartProvider.startScale(
               details.focalPoint.dx, details.focalPoint.dy);
         }
 
         void onScaleUpdate(ScaleUpdateDetails details) {
+          if (_isDraggingLine &&
+              _dragIndex != null &&
+              _dragType != _DragType.none) {
+            final layoutBox = context.findRenderObject() as RenderBox?;
+            if (layoutBox != null) {
+              final local = layoutBox.globalToLocal(details.focalPoint);
+              final containerHeight = layoutBox.size.height;
+              final chartHeight = containerHeight -
+                  (widget.showTimeLabels
+                      ? ChartConstants.timeLabelsHeight
+                      : 0.0);
+              final clampedY = local.dy.clamp(0.0, chartHeight);
+
+              double minPrice = visibleCandles.first.low;
+              double maxPrice = visibleCandles.first.high;
+              for (final c in visibleCandles) {
+                if (c.low < minPrice) minPrice = c.low;
+                if (c.high > maxPrice) maxPrice = c.high;
+              }
+              final baseRange = maxPrice - minPrice;
+              final basePadding = baseRange * ChartConstants.basePadding;
+              final paddedMinPrice = minPrice - basePadding;
+              final paddedMaxPrice = maxPrice + basePadding;
+              final paddedRange = paddedMaxPrice - paddedMinPrice;
+              final center = (paddedMinPrice + paddedMaxPrice) / 2;
+              final scaledRange = paddedRange / chartProvider.priceScale;
+              final minVisibleRange =
+                  baseRange * ChartConstants.minVisibleRange;
+              final constrainedRange = scaledRange.clamp(minVisibleRange,
+                  paddedRange * ChartConstants.maxVisibleRange);
+              final scaledMinPrice = center - (constrainedRange / 2);
+
+              final ratio = (chartHeight - clampedY) / chartHeight;
+              final newPrice = scaledMinPrice + ratio * constrainedRange;
+
+              if (_dragType == _DragType.sl &&
+                  widget.onStopLossPricesChanged != null) {
+                final updated = List<double>.from(widget.stopLossPrices);
+                updated[_dragIndex!] = newPrice;
+                widget.onStopLossPricesChanged!(updated);
+              } else if (_dragType == _DragType.tp &&
+                  widget.onTakeProfitPricesChanged != null) {
+                final updated = List<double>.from(widget.takeProfitPrices);
+                updated[_dragIndex!] = newPrice;
+                widget.onTakeProfitPricesChanged!(updated);
+              }
+            }
+            return; // swallow chart interactions while dragging a line
+          }
+
           if (details.scale == 1.0 && details.focalPointDelta != Offset.zero) {
             // This is a pan gesture, handle horizontal scrolling
             _userInteracted = true;
@@ -327,6 +447,9 @@ class _StockChartState extends State<StockChart> with TickerProviderStateMixin {
           if (chartProvider.isScrolling) {
             _startMomentumScrolling(chartProvider);
           }
+          _isDraggingLine = false;
+          _dragType = _DragType.none;
+          _dragIndex = null;
         }
 
         void onDoubleTap() {
@@ -364,33 +487,12 @@ class _StockChartState extends State<StockChart> with TickerProviderStateMixin {
                         onScaleUpdate: onScaleUpdate,
                         onScaleEnd: onScaleEnd,
                         onDoubleTap: onDoubleTap,
-                        child: CustomPaint(
-                          size: Size(chartWidth, widget.height),
-                          painter: StockChartPainter(
-                            candles: visibleCandles,
-                            candleWidth: baseCandleWidth,
-                            candleSpacing: baseCandleSpacing,
-                            timeScale: chartProvider.timeScale,
-                            priceScale: chartProvider.priceScale,
-                            chartWidth: chartWidth,
-                            bullishColor: widget.bullishColor,
-                            bearishColor: widget.bearishColor,
-                            dojiColor: widget.dojiColor,
-                            wickColor: widget.wickColor,
-                            gridColor: widget.gridColor,
-                            textColor: widget.textColor,
-                            showGrid: widget.showGrid,
-                            showVolume: widget.showVolume,
-                            showPriceLabels: widget.showPriceLabels,
-                            showTimeLabels: widget.showTimeLabels,
-                            volumeHeightRatio: widget.volumeHeightRatio,
-                            labelTextStyle: widget.labelTextStyle ??
-                                TextStyle(
-                                    color: widget.textColor, fontSize: 10),
-                            buyEntryPrices: widget.buyEntryPrices,
-                            sellEntryPrices: widget.sellEntryPrices,
-                          ),
-                        ),
+                        child: _buildInteractiveChartLayer(
+                            chartWidth,
+                            visibleCandles,
+                            baseCandleWidth,
+                            baseCandleSpacing,
+                            chartProvider),
                       )
                     : CustomPaint(
                         size: Size(chartWidth, widget.height),
@@ -416,6 +518,8 @@ class _StockChartState extends State<StockChart> with TickerProviderStateMixin {
                               TextStyle(color: widget.textColor, fontSize: 10),
                           buyEntryPrices: widget.buyEntryPrices,
                           sellEntryPrices: widget.sellEntryPrices,
+                          stopLossPrices: widget.stopLossPrices,
+                          takeProfitPrices: widget.takeProfitPrices,
                         ),
                       ),
               ),
@@ -486,6 +590,132 @@ class _StockChartState extends State<StockChart> with TickerProviderStateMixin {
           ],
         );
       },
+    );
+  }
+
+  _DragType _dragType = _DragType.none;
+  int? _dragIndex;
+  bool _hoverOverLine = false;
+
+  Widget _buildInteractiveChartLayer(
+    double chartWidth,
+    List<CandleStick> visibleCandles,
+    double baseCandleWidth,
+    double baseCandleSpacing,
+    ChartProvider chartProvider,
+  ) {
+    // Helper to compute price range like painter
+    Map<String, double> computePriceRange() {
+      if (visibleCandles.isEmpty) {
+        return {'min': 0, 'max': 1, 'range': 1};
+      }
+      double minPrice = visibleCandles.first.low;
+      double maxPrice = visibleCandles.first.high;
+      for (final c in visibleCandles) {
+        if (c.low < minPrice) minPrice = c.low;
+        if (c.high > maxPrice) maxPrice = c.high;
+      }
+      final baseRange = maxPrice - minPrice;
+      final basePadding = baseRange * ChartConstants.basePadding;
+      final paddedMinPrice = minPrice - basePadding;
+      final paddedMaxPrice = maxPrice + basePadding;
+      final paddedRange = paddedMaxPrice - paddedMinPrice;
+      final center = (paddedMinPrice + paddedMaxPrice) / 2;
+      final scaledRange = paddedRange / chartProvider.priceScale;
+      final minVisibleRange = baseRange * ChartConstants.minVisibleRange;
+      final constrainedRange = scaledRange.clamp(
+          minVisibleRange, paddedRange * ChartConstants.maxVisibleRange);
+      final scaledMinPrice = center - (constrainedRange / 2);
+      final scaledMaxPrice = center + (constrainedRange / 2);
+      return {
+        'min': scaledMinPrice,
+        'max': scaledMaxPrice,
+        'range': constrainedRange,
+      };
+    }
+
+    double getEffectiveChartHeight() {
+      final renderBox = context.findRenderObject() as RenderBox?;
+      final actualHeight = renderBox?.size.height ?? widget.height;
+      return actualHeight -
+          (widget.showTimeLabels ? ChartConstants.timeLabelsHeight : 0.0);
+    }
+
+    double priceToY(double price, Map<String, double> priceData) {
+      final chartHeight = getEffectiveChartHeight();
+      final min = priceData['min']!;
+      final range = priceData['range']!;
+      return (chartHeight - ((price - min) / range) * chartHeight)
+          .clamp(0.0, chartHeight);
+    }
+
+    // yToPrice helper not used after gesture refactor; remove if unused
+
+    void handleHover(PointerHoverEvent event) {
+      if (!widget.enableInteraction) return;
+      final priceData = computePriceRange();
+      final y = event.localPosition.dy;
+      final chartHeight = getEffectiveChartHeight();
+      bool newHover = false;
+      if (y >= 0 && y <= chartHeight) {
+        const tolerance = 10.0;
+        for (final sl in widget.stopLossPrices) {
+          final ly = priceToY(sl, priceData);
+          if ((ly - y).abs() <= tolerance) {
+            newHover = true;
+            break;
+          }
+        }
+        if (!newHover) {
+          for (final tp in widget.takeProfitPrices) {
+            final ly = priceToY(tp, priceData);
+            if ((ly - y).abs() <= tolerance) {
+              newHover = true;
+              break;
+            }
+          }
+        }
+      }
+      if (newHover != _hoverOverLine) {
+        setState(() {
+          _hoverOverLine = newHover;
+        });
+      }
+    }
+
+    return MouseRegion(
+      onHover: handleHover,
+      cursor: _hoverOverLine
+          ? SystemMouseCursors.resizeUpDown
+          : SystemMouseCursors.basic,
+      child: CustomPaint(
+        size: Size(chartWidth, widget.height),
+        painter: StockChartPainter(
+          candles: visibleCandles,
+          candleWidth: baseCandleWidth,
+          candleSpacing: baseCandleSpacing,
+          timeScale: chartProvider.timeScale,
+          priceScale: chartProvider.priceScale,
+          chartWidth: chartWidth,
+          bullishColor: widget.bullishColor,
+          bearishColor: widget.bearishColor,
+          dojiColor: widget.dojiColor,
+          wickColor: widget.wickColor,
+          gridColor: widget.gridColor,
+          textColor: widget.textColor,
+          showGrid: widget.showGrid,
+          showVolume: widget.showVolume,
+          showPriceLabels: widget.showPriceLabels,
+          showTimeLabels: widget.showTimeLabels,
+          volumeHeightRatio: widget.volumeHeightRatio,
+          labelTextStyle: widget.labelTextStyle ??
+              TextStyle(color: widget.textColor, fontSize: 10),
+          buyEntryPrices: widget.buyEntryPrices,
+          sellEntryPrices: widget.sellEntryPrices,
+          stopLossPrices: widget.stopLossPrices,
+          takeProfitPrices: widget.takeProfitPrices,
+        ),
+      ),
     );
   }
 
