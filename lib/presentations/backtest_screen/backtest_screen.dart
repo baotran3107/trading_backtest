@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../modules/chart/chart.dart';
 import '../../model/candle_model.dart';
+import '../../model/closed_order_model.dart';
 import '../../repository/trading_data_repository.dart';
 import 'widgets/trading_controls.dart';
 import 'widgets/backtesting_controls.dart';
 import 'widgets/price_display_panel.dart';
 import 'widgets/state_widgets.dart';
+import 'widgets/closed_orders_panel.dart';
 import 'bloc/backtest_bloc.dart';
 
 /// Demo page showing how to use the StockChart widget with XAUUSD data
@@ -46,6 +48,15 @@ class _BackTestScreenState extends State<BackTestScreen> {
 
   // Track entry types for P&L calculation
   final List<String> _entryTypes = []; // 'BUY' or 'SELL'
+
+  // Track entry times for closed order history
+  final List<DateTime> _entryTimes = [];
+
+  // Store closed orders with P&L data
+  final List<ClosedOrder> _closedOrders = [];
+
+  // Track order IDs for unique identification
+  int _orderIdCounter = 0;
 
   // Backtesting state handled by BLoC
 
@@ -142,6 +153,7 @@ class _BackTestScreenState extends State<BackTestScreen> {
         _buyEntries.add(price);
         _buyLotSizes.add(_lotSize);
         _entryTypes.add('BUY');
+        _entryTimes.add(DateTime.now());
         // Auto SL/TP: example offsets for XAUUSD
         _stopLossPrices.add(price - 1.0);
         _takeProfitPrices.add(price + 2.0);
@@ -164,6 +176,7 @@ class _BackTestScreenState extends State<BackTestScreen> {
         _sellEntries.add(price);
         _sellLotSizes.add(_lotSize);
         _entryTypes.add('SELL');
+        _entryTimes.add(DateTime.now());
         // Auto SL/TP for sell
         _stopLossPrices.add(price + 1.0);
         _takeProfitPrices.add(price - 2.0);
@@ -252,6 +265,135 @@ class _BackTestScreenState extends State<BackTestScreen> {
       lotSize: lotSize,
       entryType: entryType,
     );
+  }
+
+  /// Check for price crossings and close orders if needed
+  void _checkOrderCrossings() {
+    final currentPrice = _currentVisiblePrice();
+    if (currentPrice == null) return;
+
+    final List<int> ordersToClose = [];
+
+    // Check stop loss crossings
+    for (int i = 0; i < _stopLossPrices.length; i++) {
+      if (i >= _entryTypes.length) continue;
+
+      final slPrice = _stopLossPrices[i];
+      final entryType = _entryTypes[i];
+
+      bool shouldClose = false;
+      if (entryType == 'BUY' && currentPrice <= slPrice) {
+        // BUY order: close if price drops to or below SL
+        shouldClose = true;
+      } else if (entryType == 'SELL' && currentPrice >= slPrice) {
+        // SELL order: close if price rises to or above SL
+        shouldClose = true;
+      }
+
+      if (shouldClose) {
+        ordersToClose.add(i);
+        _closeOrder(i, slPrice, 'SL');
+      }
+    }
+
+    // Check take profit crossings
+    for (int i = 0; i < _takeProfitPrices.length; i++) {
+      if (i >= _entryTypes.length) continue;
+
+      final tpPrice = _takeProfitPrices[i];
+      final entryType = _entryTypes[i];
+
+      bool shouldClose = false;
+      if (entryType == 'BUY' && currentPrice >= tpPrice) {
+        // BUY order: close if price rises to or above TP
+        shouldClose = true;
+      } else if (entryType == 'SELL' && currentPrice <= tpPrice) {
+        // SELL order: close if price drops to or below TP
+        shouldClose = true;
+      }
+
+      if (shouldClose) {
+        ordersToClose.add(i);
+        _closeOrder(i, tpPrice, 'TP');
+      }
+    }
+
+    // Remove closed orders from all lists (in reverse order to maintain indices)
+    if (ordersToClose.isNotEmpty) {
+      setState(() {
+        ordersToClose.sort((a, b) => b.compareTo(a)); // Sort descending
+        for (final index in ordersToClose) {
+          _removeOrderAtIndex(index);
+        }
+      });
+    }
+  }
+
+  /// Close an order and store P&L data
+  void _closeOrder(int index, double exitPrice, String closeReason) {
+    if (index >= _entryTypes.length) return;
+
+    final entryType = _entryTypes[index];
+    final entryPrice = entryType == 'BUY'
+        ? (index < _buyEntries.length ? _buyEntries[index] : 0.0)
+        : (index < _sellEntries.length ? _sellEntries[index] : 0.0);
+    final lotSize = entryType == 'BUY'
+        ? (index < _buyLotSizes.length ? _buyLotSizes[index] : _lotSize)
+        : (index < _sellLotSizes.length ? _sellLotSizes[index] : _lotSize);
+    final entryTime =
+        index < _entryTimes.length ? _entryTimes[index] : DateTime.now();
+
+    if (entryPrice == 0.0) return;
+
+    final closedOrder = ClosedOrder.fromEntry(
+      id: 'ORDER_${_orderIdCounter++}',
+      entryType: entryType,
+      entryPrice: entryPrice,
+      lotSize: lotSize,
+      entryTime: entryTime,
+      exitPrice: exitPrice,
+      closeReason: closeReason,
+    );
+
+    _closedOrders.add(closedOrder);
+
+    // Show notification
+    final pnlText = closedOrder.pnlText;
+    final color = closedOrder.isProfitable ? Colors.green : Colors.red;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+            'Order closed: $closeReason @ ${exitPrice.toStringAsFixed(3)} · $pnlText'),
+        backgroundColor: color,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  /// Remove order at specific index from all tracking lists
+  void _removeOrderAtIndex(int index) {
+    if (index >= _entryTypes.length) return;
+
+    final entryType = _entryTypes[index];
+
+    // Remove from appropriate entry list
+    if (entryType == 'BUY' && index < _buyEntries.length) {
+      _buyEntries.removeAt(index);
+      if (index < _buyLotSizes.length) {
+        _buyLotSizes.removeAt(index);
+      }
+    } else if (entryType == 'SELL' && index < _sellEntries.length) {
+      _sellEntries.removeAt(index);
+      if (index < _sellLotSizes.length) {
+        _sellLotSizes.removeAt(index);
+      }
+    }
+
+    // Remove from common lists
+    if (index < _entryTypes.length) _entryTypes.removeAt(index);
+    if (index < _entryTimes.length) _entryTimes.removeAt(index);
+    if (index < _stopLossPrices.length) _stopLossPrices.removeAt(index);
+    if (index < _takeProfitPrices.length) _takeProfitPrices.removeAt(index);
   }
 
   /// Show indicator selection dialog
@@ -440,9 +582,38 @@ class _BackTestScreenState extends State<BackTestScreen> {
 
             const SizedBox(height: 16),
 
-            // Chart area
+            // Main content area with chart and orders
             Expanded(
-              child: _buildChart(),
+              child: Row(
+                children: [
+                  // Chart area
+                  Expanded(
+                    flex: 3,
+                    child: _buildChart(),
+                  ),
+
+                  const SizedBox(width: 16),
+
+                  // Closed orders panel
+                  Expanded(
+                    flex: 1,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.grey[800],
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: ClosedOrdersPanel(
+                        closedOrders: _closedOrders,
+                        onClear: () {
+                          setState(() {
+                            _closedOrders.clear();
+                          });
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
 
             const SizedBox(height: 16),
@@ -557,6 +728,7 @@ class _BackTestScreenState extends State<BackTestScreen> {
                 return List.generate(_takeProfitPrices.length,
                     (index) => _getTakeProfitPnL(index) ?? 0.0);
               },
+              onPriceUpdate: _checkOrderCrossings,
             ),
           ),
         );

@@ -44,6 +44,7 @@ class StockChart extends StatefulWidget {
   final ValueChanged<List<double>>? onTakeProfitPricesChanged;
   final List<double> Function()? getStopLossPnL;
   final List<double> Function()? getTakeProfitPnL;
+  final VoidCallback? onPriceUpdate;
 
   const StockChart({
     Key? key,
@@ -79,6 +80,7 @@ class StockChart extends StatefulWidget {
     this.onTakeProfitPricesChanged,
     this.getStopLossPnL,
     this.getTakeProfitPnL,
+    this.onPriceUpdate,
   }) : super(key: key);
 
   @override
@@ -151,6 +153,13 @@ class _StockChartState extends State<StockChart> with TickerProviderStateMixin {
       } catch (_) {
         // Provider might not be available yet in rare rebuild orders; ignore
       }
+    }
+
+    // Check for order crossings when price data changes
+    if (candlesLengthChanged && widget.onPriceUpdate != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        widget.onPriceUpdate?.call();
+      });
     }
   }
 
