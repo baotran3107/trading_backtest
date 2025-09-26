@@ -40,6 +40,13 @@ class _BackTestScreenState extends State<BackTestScreen> {
   final List<double> _stopLossPrices = [];
   final List<double> _takeProfitPrices = [];
 
+  // Track lot sizes for each position (same order as entries)
+  final List<double> _buyLotSizes = [];
+  final List<double> _sellLotSizes = [];
+
+  // Track entry types for P&L calculation
+  final List<String> _entryTypes = []; // 'BUY' or 'SELL'
+
   // Backtesting state handled by BLoC
 
   @override
@@ -133,6 +140,8 @@ class _BackTestScreenState extends State<BackTestScreen> {
     if (price != null) {
       setState(() {
         _buyEntries.add(price);
+        _buyLotSizes.add(_lotSize);
+        _entryTypes.add('BUY');
         // Auto SL/TP: example offsets for XAUUSD
         _stopLossPrices.add(price - 1.0);
         _takeProfitPrices.add(price + 2.0);
@@ -153,6 +162,8 @@ class _BackTestScreenState extends State<BackTestScreen> {
     if (price != null) {
       setState(() {
         _sellEntries.add(price);
+        _sellLotSizes.add(_lotSize);
+        _entryTypes.add('SELL');
         // Auto SL/TP for sell
         _stopLossPrices.add(price + 1.0);
         _takeProfitPrices.add(price - 2.0);
@@ -177,6 +188,70 @@ class _BackTestScreenState extends State<BackTestScreen> {
       return _xauusdData!.last.close;
     }
     return null;
+  }
+
+  /// Calculate P&L for a position
+  double _calculatePnL({
+    required double entryPrice,
+    required double exitPrice,
+    required double lotSize,
+    required String entryType,
+  }) {
+    // For XAUUSD, 1 lot = 100 ounces
+    // P&L = (exitPrice - entryPrice) * lotSize * 100
+    // For SELL positions, reverse the calculation
+    final double priceDifference =
+        entryType == 'BUY' ? exitPrice - entryPrice : entryPrice - exitPrice;
+
+    return priceDifference * lotSize * 100; // 100 ounces per lot
+  }
+
+  /// Get P&L for stop loss at given index
+  double? _getStopLossPnL(int index) {
+    if (index >= _stopLossPrices.length) return null;
+
+    final slPrice = _stopLossPrices[index];
+    final entryType = index < _entryTypes.length ? _entryTypes[index] : 'BUY';
+    final lotSize = entryType == 'BUY'
+        ? (index < _buyLotSizes.length ? _buyLotSizes[index] : _lotSize)
+        : (index < _sellLotSizes.length ? _sellLotSizes[index] : _lotSize);
+
+    final entryPrice = entryType == 'BUY'
+        ? (index < _buyEntries.length ? _buyEntries[index] : 0.0)
+        : (index < _sellEntries.length ? _sellEntries[index] : 0.0);
+
+    if (entryPrice == 0.0) return null;
+
+    return _calculatePnL(
+      entryPrice: entryPrice,
+      exitPrice: slPrice,
+      lotSize: lotSize,
+      entryType: entryType,
+    );
+  }
+
+  /// Get P&L for take profit at given index
+  double? _getTakeProfitPnL(int index) {
+    if (index >= _takeProfitPrices.length) return null;
+
+    final tpPrice = _takeProfitPrices[index];
+    final entryType = index < _entryTypes.length ? _entryTypes[index] : 'BUY';
+    final lotSize = entryType == 'BUY'
+        ? (index < _buyLotSizes.length ? _buyLotSizes[index] : _lotSize)
+        : (index < _sellLotSizes.length ? _sellLotSizes[index] : _lotSize);
+
+    final entryPrice = entryType == 'BUY'
+        ? (index < _buyEntries.length ? _buyEntries[index] : 0.0)
+        : (index < _sellEntries.length ? _sellEntries[index] : 0.0);
+
+    if (entryPrice == 0.0) return null;
+
+    return _calculatePnL(
+      entryPrice: entryPrice,
+      exitPrice: tpPrice,
+      lotSize: lotSize,
+      entryType: entryType,
+    );
   }
 
   /// Show indicator selection dialog
@@ -473,6 +548,14 @@ class _BackTestScreenState extends State<BackTestScreen> {
                     ..clear()
                     ..addAll(updated);
                 });
+              },
+              getStopLossPnL: () {
+                return List.generate(_stopLossPrices.length,
+                    (index) => _getStopLossPnL(index) ?? 0.0);
+              },
+              getTakeProfitPnL: () {
+                return List.generate(_takeProfitPrices.length,
+                    (index) => _getTakeProfitPnL(index) ?? 0.0);
               },
             ),
           ),

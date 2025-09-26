@@ -42,6 +42,8 @@ class StockChart extends StatefulWidget {
   final List<double> takeProfitPrices;
   final ValueChanged<List<double>>? onStopLossPricesChanged;
   final ValueChanged<List<double>>? onTakeProfitPricesChanged;
+  final List<double> Function()? getStopLossPnL;
+  final List<double> Function()? getTakeProfitPnL;
 
   const StockChart({
     Key? key,
@@ -75,6 +77,8 @@ class StockChart extends StatefulWidget {
     this.takeProfitPrices = const [],
     this.onStopLossPricesChanged,
     this.onTakeProfitPricesChanged,
+    this.getStopLossPnL,
+    this.getTakeProfitPnL,
   }) : super(key: key);
 
   @override
@@ -218,6 +222,8 @@ class _StockChartState extends State<StockChart> with TickerProviderStateMixin {
             sellEntryPrices: widget.sellEntryPrices,
             stopLossPrices: widget.stopLossPrices,
             takeProfitPrices: widget.takeProfitPrices,
+            stopLossPnL: widget.getStopLossPnL?.call() ?? [],
+            takeProfitPnL: widget.getTakeProfitPnL?.call() ?? [],
           ),
         ),
       );
@@ -520,6 +526,8 @@ class _StockChartState extends State<StockChart> with TickerProviderStateMixin {
                           sellEntryPrices: widget.sellEntryPrices,
                           stopLossPrices: widget.stopLossPrices,
                           takeProfitPrices: widget.takeProfitPrices,
+                          stopLossPnL: widget.getStopLossPnL?.call() ?? [],
+                          takeProfitPnL: widget.getTakeProfitPnL?.call() ?? [],
                         ),
                       ),
               ),
@@ -714,6 +722,8 @@ class _StockChartState extends State<StockChart> with TickerProviderStateMixin {
           sellEntryPrices: widget.sellEntryPrices,
           stopLossPrices: widget.stopLossPrices,
           takeProfitPrices: widget.takeProfitPrices,
+          stopLossPnL: widget.getStopLossPnL?.call() ?? [],
+          takeProfitPnL: widget.getTakeProfitPnL?.call() ?? [],
         ),
       ),
     );
