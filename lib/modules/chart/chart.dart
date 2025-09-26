@@ -298,7 +298,7 @@ class _StockChartState extends State<StockChart> with TickerProviderStateMixin {
                     .clamp(0.0, chartHeight);
               }
 
-              const tolerance = 10.0;
+              const tolerance = 24.0; // easier to tap/drag SL/TP lines
               for (int i = 0; i < widget.stopLossPrices.length; i++) {
                 final ly = priceToY(widget.stopLossPrices[i]);
                 if ((ly - local.dy).abs() <= tolerance) {
@@ -658,7 +658,7 @@ class _StockChartState extends State<StockChart> with TickerProviderStateMixin {
       final chartHeight = getEffectiveChartHeight();
       bool newHover = false;
       if (y >= 0 && y <= chartHeight) {
-        const tolerance = 10.0;
+        const tolerance = 24.0; // match drag hit tolerance for consistent UX
         for (final sl in widget.stopLossPrices) {
           final ly = priceToY(sl, priceData);
           if ((ly - y).abs() <= tolerance) {
