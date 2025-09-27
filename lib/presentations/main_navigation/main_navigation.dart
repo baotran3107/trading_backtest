@@ -120,45 +120,63 @@ class _MainNavigationState extends State<MainNavigation>
                       _animationController.reset();
                       _animationController.forward();
                     },
+                    behavior: HitTestBehavior.opaque,
                     child: Container(
                       height: 70,
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          // Icon with scale animation
-                          AnimatedScale(
-                            scale: isSelected ? 1.1 : 1.0,
-                            duration: const Duration(milliseconds: 200),
-                            child: Icon(
-                              isSelected ? item.activeIcon : item.icon,
-                              color: isSelected
-                                  ? item.color
-                                  : AppColors.textTertiary,
-                              size: isSelected ? 26 : 24,
-                            ),
-                          ),
-                          // Label with fade animation
-                          Positioned(
-                            bottom: 8,
-                            child: AnimatedOpacity(
-                              opacity: isSelected ? 1.0 : 0.7,
-                              duration: const Duration(milliseconds: 200),
-                              child: AnimatedDefaultTextStyle(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        color: Colors.transparent,
+                      ),
+                      child: GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _currentIndex = index;
+                          });
+                          _animationController.reset();
+                          _animationController.forward();
+                        },
+                        behavior: HitTestBehavior.opaque,
+                        child: Container(
+                          height: 70,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              // Icon with scale animation
+                              AnimatedScale(
+                                scale: isSelected ? 1.1 : 1.0,
                                 duration: const Duration(milliseconds: 200),
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: isSelected
-                                      ? FontWeight.w600
-                                      : FontWeight.w500,
+                                child: Icon(
+                                  isSelected ? item.activeIcon : item.icon,
                                   color: isSelected
                                       ? item.color
                                       : AppColors.textTertiary,
+                                  size: isSelected ? 26 : 24,
                                 ),
-                                child: Text(item.label),
                               ),
-                            ),
+                              // Label with fade animation
+                              Positioned(
+                                bottom: 8,
+                                child: AnimatedOpacity(
+                                  opacity: isSelected ? 1.0 : 0.7,
+                                  duration: const Duration(milliseconds: 200),
+                                  child: AnimatedDefaultTextStyle(
+                                    duration: const Duration(milliseconds: 200),
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: isSelected
+                                          ? FontWeight.w600
+                                          : FontWeight.w500,
+                                      color: isSelected
+                                          ? item.color
+                                          : AppColors.textTertiary,
+                                    ),
+                                    child: Text(item.label),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
                     ),
                   ),
