@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:provider/provider.dart';
 import 'presentations/main_navigation/main_navigation.dart';
 import 'repository/trading_data_repository.dart';
 import 'presentations/backtest_screen/bloc/backtest_bloc.dart';
 import 'theme/app_theme.dart';
+import 'theme/theme_provider.dart';
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -24,10 +26,19 @@ class MyApp extends StatelessWidget {
             )..add(const BacktestInitialized()),
           ),
         ],
-        child: MaterialApp(
-          title: 'Trading Game',
-          theme: AppTheme.darkTheme,
-          home: const MainNavigation(),
+        child: ChangeNotifierProvider(
+          create: (context) => ThemeProvider()..initializeTheme(),
+          child: Consumer<ThemeProvider>(
+            builder: (context, themeProvider, child) {
+              return MaterialApp(
+                title: 'Trading Game',
+                theme: AppTheme.lightTheme,
+                darkTheme: AppTheme.darkTheme,
+                themeMode: themeProvider.themeMode,
+                home: const MainNavigation(),
+              );
+            },
+          ),
         ),
       ),
     );

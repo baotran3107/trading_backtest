@@ -128,6 +128,46 @@ class AppColors {
     end: Alignment.bottomRight,
   );
 
+  // Dark Mode Colors
+  static const Color darkBackground = Color(0xFF121212);
+  static const Color darkBackgroundSecondary = Color(0xFF1E1E1E);
+  static const Color darkBackgroundTertiary = Color(0xFF2D2D2D);
+  static const Color darkBackgroundCard = Color(0xFF1E1E1E);
+  static const Color darkBackgroundCardHover = Color(0xFF2D2D2D);
+
+  static const Color darkSurface = Color(0xFF1E1E1E);
+  static const Color darkSurfaceVariant = Color(0xFF2D2D2D);
+  static const Color darkSurfaceContainer = Color(0xFF1E1E1E);
+
+  static const Color darkTextPrimary = Color(0xFFFFFFFF);
+  static const Color darkTextSecondary = Color(0xFFB3B3B3);
+  static const Color darkTextTertiary = Color(0xFF808080);
+  static const Color darkTextDisabled = Color(0xFF666666);
+  static const Color darkTextHint = Color(0xFF666666);
+
+  static const Color darkBorder = Color(0xFF333333);
+  static const Color darkBorderLight = Color(0xFF2D2D2D);
+  static const Color darkBorderDark = Color(0xFF404040);
+
+  static const Color darkShadow = Color(0x80000000);
+  static const Color darkShadowLight = Color(0x40000000);
+  static const Color darkShadowDark = Color(0xCC000000);
+
+  static const Color darkChartBackground = Color(0xFF1E1E1E);
+  static const Color darkChartGrid = Color(0xFF2D2D2D);
+  static const Color darkChartText = Color(0xFFB3B3B3);
+  static const Color darkChartAxis = Color(0xFF666666);
+
+  static const Color darkInputBackground = Color(0xFF2D2D2D);
+  static const Color darkInputBorder = Color(0xFF404040);
+  static const Color darkInputBorderFocus = Color(0xFF3B82F6);
+  static const Color darkInputText = Color(0xFFFFFFFF);
+  static const Color darkInputPlaceholder = Color(0xFF808080);
+
+  static const Color darkOverlay = Color(0xCC000000);
+  static const Color darkOverlayLight = Color(0x80000000);
+  static const Color darkOverlayDark = Color(0xFF000000);
+
   // Utility methods
   static Color withOpacity(Color color, double opacity) {
     return color.withOpacity(opacity);

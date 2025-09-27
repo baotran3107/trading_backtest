@@ -1,119 +1,122 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/app_spacing.dart';
+import '../../theme/theme_provider.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.backgroundSecondary,
-      appBar: AppBar(
-        backgroundColor: AppColors.background,
-        title: const Text('Settings'),
-        elevation: 0,
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(AppSpacing.screenMargin),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // User Profile Section
-              _buildUserProfileSection(),
-              const SizedBox(height: AppSpacing.xxxlg),
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, child) {
+        final isDarkMode = themeProvider.isDarkMode;
+        final backgroundColor = isDarkMode
+            ? AppColors.darkBackgroundSecondary
+            : AppColors.backgroundSecondary;
+        final appBarColor =
+            isDarkMode ? AppColors.darkBackground : AppColors.background;
 
-              // Account Settings
-              _buildSettingsSection(
-                title: 'Account',
-                items: [
-                  _buildSettingsItem(
-                    icon: Icons.person,
-                    title: 'Profile',
-                    subtitle: 'Manage your personal information',
-                    onTap: () {},
-                  ),
-                  _buildSettingsItem(
-                    icon: Icons.security,
-                    title: 'Security',
-                    subtitle: 'Password and authentication',
-                    onTap: () {},
-                  ),
-                  _buildSettingsItem(
-                    icon: Icons.notifications,
-                    title: 'Notifications',
-                    subtitle: 'Manage notification preferences',
-                    onTap: () {},
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.xxxlg),
-
-              // Trading Settings
-              _buildSettingsSection(
-                title: 'Trading',
-                items: [
-                  _buildSettingsItem(
-                    icon: Icons.trending_up,
-                    title: 'Trading Preferences',
-                    subtitle: 'Default settings for trading',
-                    onTap: () {},
-                  ),
-                  _buildSettingsItem(
-                    icon: Icons.analytics,
-                    title: 'Risk Management',
-                    subtitle: 'Configure risk parameters',
-                    onTap: () {},
-                  ),
-                  _buildSettingsItem(
-                    icon: Icons.data_usage,
-                    title: 'Data Sources',
-                    subtitle: 'Manage data connections',
-                    onTap: () {},
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.xxxlg),
-
-              // App Settings
-              _buildSettingsSection(
-                title: 'App',
-                items: [
-                  _buildSettingsItem(
-                    icon: Icons.palette,
-                    title: 'Theme',
-                    subtitle: 'Light / Dark mode',
-                    onTap: () {},
-                    trailing: Switch(
-                      value: false,
-                      onChanged: (value) {},
-                      activeColor: AppColors.primary,
-                    ),
-                  ),
-                  _buildSettingsItem(
-                    icon: Icons.language,
-                    title: 'Language',
-                    subtitle: 'English',
-                    onTap: () {},
-                  ),
-                  _buildSettingsItem(
-                    icon: Icons.help,
-                    title: 'Help & Support',
-                    subtitle: 'Get help and contact support',
-                    onTap: () {},
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.xxxlg),
-
-              // Logout Button
-              _buildLogoutButton(),
-            ],
+        return Scaffold(
+          backgroundColor: backgroundColor,
+          appBar: AppBar(
+            backgroundColor: appBarColor,
+            title: const Text('Settings'),
+            elevation: 0,
           ),
-        ),
-      ),
+          body: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(AppSpacing.screenMargin),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // User Profile Section
+                  _buildUserProfileSection(),
+                  const SizedBox(height: AppSpacing.xxxlg),
+
+                  // Account Settings
+                  _buildSettingsSection(
+                    title: 'Account',
+                    items: [
+                      _buildSettingsItem(
+                        icon: Icons.person,
+                        title: 'Profile',
+                        subtitle: 'Manage your personal information',
+                        onTap: () {},
+                      ),
+                      _buildSettingsItem(
+                        icon: Icons.security,
+                        title: 'Security',
+                        subtitle: 'Password and authentication',
+                        onTap: () {},
+                      ),
+                      _buildSettingsItem(
+                        icon: Icons.notifications,
+                        title: 'Notifications',
+                        subtitle: 'Manage notification preferences',
+                        onTap: () {},
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.xxxlg),
+
+                  // Trading Settings
+                  _buildSettingsSection(
+                    title: 'Trading',
+                    items: [
+                      _buildSettingsItem(
+                        icon: Icons.trending_up,
+                        title: 'Trading Preferences',
+                        subtitle: 'Default settings for trading',
+                        onTap: () {},
+                      ),
+                      _buildSettingsItem(
+                        icon: Icons.analytics,
+                        title: 'Risk Management',
+                        subtitle: 'Configure risk parameters',
+                        onTap: () {},
+                      ),
+                      _buildSettingsItem(
+                        icon: Icons.data_usage,
+                        title: 'Data Sources',
+                        subtitle: 'Manage data connections',
+                        onTap: () {},
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.xxxlg),
+
+                  // App Settings
+                  _buildSettingsSection(
+                    title: 'App',
+                    items: [
+                      _buildThemeSettingsItem(),
+                      _buildSettingsItem(
+                        icon: Icons.language,
+                        title: 'Language',
+                        subtitle: 'English',
+                        onTap: () {},
+                      ),
+                      _buildSettingsItem(
+                        icon: Icons.help,
+                        title: 'Help & Support',
+                        subtitle: 'Get help and contact support',
+                        onTap: () {},
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.xxxlg),
+
+                  // Logout Button
+                  _buildLogoutButton(),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -298,6 +301,82 @@ class SettingsScreen extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildThemeSettingsItem() {
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, child) {
+        final isDarkMode = themeProvider.isDarkMode;
+
+        return _buildSettingsItem(
+          icon: Icons.palette,
+          title: 'Theme',
+          subtitle: themeProvider.themeModeDescription,
+          onTap: () => _showThemeDialog(context, themeProvider),
+          trailing: Switch(
+            value: isDarkMode,
+            onChanged: (value) => themeProvider.toggleTheme(),
+            activeColor: AppColors.primary,
+          ),
+        );
+      },
+    );
+  }
+
+  void _showThemeDialog(BuildContext context, ThemeProvider themeProvider) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Choose Theme'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            RadioListTile<ThemeMode>(
+              title: const Text('Light'),
+              subtitle: const Text('Always use light theme'),
+              value: ThemeMode.light,
+              groupValue: themeProvider.themeMode,
+              onChanged: (value) {
+                if (value != null) {
+                  themeProvider.setThemeMode(value);
+                  Navigator.of(context).pop();
+                }
+              },
+            ),
+            RadioListTile<ThemeMode>(
+              title: const Text('Dark'),
+              subtitle: const Text('Always use dark theme'),
+              value: ThemeMode.dark,
+              groupValue: themeProvider.themeMode,
+              onChanged: (value) {
+                if (value != null) {
+                  themeProvider.setThemeMode(value);
+                  Navigator.of(context).pop();
+                }
+              },
+            ),
+            RadioListTile<ThemeMode>(
+              title: const Text('System'),
+              subtitle: const Text('Follow system setting'),
+              value: ThemeMode.system,
+              groupValue: themeProvider.themeMode,
+              onChanged: (value) {
+                if (value != null) {
+                  themeProvider.setThemeMode(value);
+                  Navigator.of(context).pop();
+                }
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+        ],
       ),
     );
   }
