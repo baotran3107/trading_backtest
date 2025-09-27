@@ -168,6 +168,52 @@ class AppColors {
   static const Color darkOverlayLight = Color(0x80000000);
   static const Color darkOverlayDark = Color(0xFF000000);
 
+  // White Tone Colors for better contrast and visual hierarchy
+  static const Color white = Color(0xFFFFFFFF);
+  static const Color white95 = Color(0xFFF2F2F2);
+  static const Color white90 = Color(0xFFE6E6E6);
+  static const Color white85 = Color(0xFFD9D9D9);
+  static const Color white80 = Color(0xFFCCCCCC);
+  static const Color white75 = Color(0xFFBFBFBF);
+  static const Color white70 = Color(0xFFB3B3B3);
+  static const Color white65 = Color(0xFFA6A6A6);
+  static const Color white60 = Color(0xFF999999);
+  static const Color white55 = Color(0xFF8C8C8C);
+  static const Color white50 = Color(0xFF808080);
+  static const Color white45 = Color(0xFF737373);
+  static const Color white40 = Color(0xFF666666);
+  static const Color white35 = Color(0xFF595959);
+  static const Color white30 = Color(0xFF4D4D4D);
+  static const Color white25 = Color(0xFF404040);
+  static const Color white20 = Color(0xFF333333);
+  static const Color white15 = Color(0xFF262626);
+  static const Color white10 = Color(0xFF1A1A1A);
+  static const Color white5 = Color(0xFF0D0D0D);
+  static const Color black = Color(0xFF000000);
+
+  // Dark Mode White Tone Colors (inverted for dark backgrounds)
+  static const Color darkWhite = Color(0xFF000000);
+  static const Color darkWhite95 = Color(0xFF0D0D0D);
+  static const Color darkWhite90 = Color(0xFF1A1A1A);
+  static const Color darkWhite85 = Color(0xFF262626);
+  static const Color darkWhite80 = Color(0xFF333333);
+  static const Color darkWhite75 = Color(0xFF404040);
+  static const Color darkWhite70 = Color(0xFF4D4D4D);
+  static const Color darkWhite65 = Color(0xFF595959);
+  static const Color darkWhite60 = Color(0xFF666666);
+  static const Color darkWhite55 = Color(0xFF737373);
+  static const Color darkWhite50 = Color(0xFF808080);
+  static const Color darkWhite45 = Color(0xFF8C8C8C);
+  static const Color darkWhite40 = Color(0xFF999999);
+  static const Color darkWhite35 = Color(0xFFA6A6A6);
+  static const Color darkWhite30 = Color(0xFFB3B3B3);
+  static const Color darkWhite25 = Color(0xFFBFBFBF);
+  static const Color darkWhite20 = Color(0xFFCCCCCC);
+  static const Color darkWhite15 = Color(0xFFD9D9D9);
+  static const Color darkWhite10 = Color(0xFFE6E6E6);
+  static const Color darkWhite5 = Color(0xFFF2F2F2);
+  static const Color darkBlack = Color(0xFFFFFFFF);
+
   // Utility methods
   static Color withOpacity(Color color, double opacity) {
     return color.withOpacity(opacity);

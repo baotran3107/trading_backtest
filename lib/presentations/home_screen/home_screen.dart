@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
+import '../../theme/theme_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/app_spacing.dart';
 import '../backtest_screen/backtest_screen.dart';
@@ -10,18 +11,18 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundSecondary,
+      backgroundColor: ThemeColors.backgroundSecondary(context),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(AppSpacing.screenMargin),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildWelcomeSection(),
+              _buildWelcomeSection(context),
               const SizedBox(height: AppSpacing.xxxlg),
               _buildActionButtonsSection(context),
               const SizedBox(height: AppSpacing.xxxlg),
-              _buildRecentBacktestsSection(),
+              _buildRecentBacktestsSection(context),
             ],
           ),
         ),
@@ -29,23 +30,16 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildWelcomeSection() {
+  Widget _buildWelcomeSection(BuildContext context) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(AppSpacing.xlg),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppColors.backgroundCard,
-            AppColors.backgroundCard.withValues(alpha: 0.8),
-          ],
-        ),
+        color: ThemeColors.backgroundCard(context),
         borderRadius: BorderRadius.circular(AppSpacing.radiusLarge),
         boxShadow: [
           BoxShadow(
-            color: AppColors.shadowLight,
+            color: ThemeColors.shadowLight(context),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -56,7 +50,7 @@ class HomeScreen extends StatelessWidget {
           ),
         ],
         border: Border.all(
-          color: AppColors.borderLight,
+          color: ThemeColors.borderLight(context),
           width: 1,
         ),
       ),
@@ -80,9 +74,11 @@ class HomeScreen extends StatelessWidget {
                 },
               ),
               const SizedBox(width: AppSpacing.sm),
-              const Text(
+              Text(
                 'Xin chào, Bảo',
-                style: AppTextStyles.titleLarge,
+                style: AppTextStyles.titleLarge.copyWith(
+                  color: ThemeColors.textPrimary(context),
+                ),
               ),
             ],
           ),
@@ -94,10 +90,11 @@ class HomeScreen extends StatelessWidget {
               // Balance Card
               Expanded(
                 child: _buildInfoCard(
+                  context: context,
                   title: 'Balance',
                   value: '\$10,000',
                   icon: '💰',
-                  color: AppColors.primary,
+                  color: ThemeColors.background(context),
                   delay: 0,
                 ),
               ),
@@ -106,10 +103,11 @@ class HomeScreen extends StatelessWidget {
               // Last Test Card
               Expanded(
                 child: _buildInfoCard(
+                  context: context,
                   title: 'Last Test',
                   value: 'EURUSD +250\$',
                   icon: '📈',
-                  color: AppColors.success,
+                  color: ThemeColors.background(context),
                   delay: 200,
                 ),
               ),
@@ -121,6 +119,7 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _buildInfoCard({
+    required BuildContext context,
     required String title,
     required String value,
     required String icon,
@@ -172,7 +171,7 @@ class HomeScreen extends StatelessWidget {
                       Text(
                         title,
                         style: AppTextStyles.bodySmall.copyWith(
-                          color: AppColors.textSecondary,
+                          color: ThemeColors.textSecondary(context),
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -182,7 +181,7 @@ class HomeScreen extends StatelessWidget {
                   Text(
                     value,
                     style: AppTextStyles.titleMedium.copyWith(
-                      color: color,
+                      color: AppColors.black,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -243,18 +242,11 @@ class HomeScreen extends StatelessWidget {
     return Container(
       height: 70,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppColors.backgroundCard,
-            AppColors.backgroundCard.withValues(alpha: 0.9),
-          ],
-        ),
+        color: ThemeColors.backgroundCard(context),
         borderRadius: BorderRadius.circular(AppSpacing.radiusLarge),
         boxShadow: [
           BoxShadow(
-            color: AppColors.shadowLight,
+            color: ThemeColors.shadowLight(context),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -289,7 +281,7 @@ class HomeScreen extends StatelessWidget {
                 Text(
                   title,
                   style: AppTextStyles.titleMedium.copyWith(
-                    color: color,
+                    color: AppColors.black,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -301,7 +293,7 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildRecentBacktestsSection() {
+  Widget _buildRecentBacktestsSection(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -312,9 +304,11 @@ class HomeScreen extends StatelessWidget {
               style: TextStyle(fontSize: 24),
             ),
             const SizedBox(width: AppSpacing.sm),
-            const Text(
+            Text(
               'Recent Backtests',
-              style: AppTextStyles.headlineLarge,
+              style: AppTextStyles.headlineLarge.copyWith(
+                color: ThemeColors.textPrimary(context),
+              ),
             ),
           ],
         ),
@@ -322,6 +316,7 @@ class HomeScreen extends StatelessWidget {
 
         // Backtest Items with staggered animations
         _buildAnimatedBacktestItem(
+          context: context,
           pair: 'EURUSD M15',
           result: '+250\$',
           date: '26/09/2025',
@@ -331,6 +326,7 @@ class HomeScreen extends StatelessWidget {
         const SizedBox(height: AppSpacing.md),
 
         _buildAnimatedBacktestItem(
+          context: context,
           pair: 'GBPUSD H1',
           result: '-120\$',
           date: '24/09/2025',
@@ -340,6 +336,7 @@ class HomeScreen extends StatelessWidget {
         const SizedBox(height: AppSpacing.md),
 
         _buildAnimatedBacktestItem(
+          context: context,
           pair: 'XAUUSD H4',
           result: '+540\$',
           date: '20/09/2025',
@@ -351,6 +348,7 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _buildAnimatedBacktestItem({
+    required BuildContext context,
     required String pair,
     required String result,
     required String date,
@@ -366,6 +364,7 @@ class HomeScreen extends StatelessWidget {
           child: Opacity(
             opacity: animValue,
             child: _buildBacktestItem(
+              context: context,
               pair: pair,
               result: result,
               date: date,
@@ -378,6 +377,7 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _buildBacktestItem({
+    required BuildContext context,
     required String pair,
     required String result,
     required String date,
@@ -387,14 +387,7 @@ class HomeScreen extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppColors.backgroundCard,
-            AppColors.backgroundCard.withValues(alpha: 0.8),
-          ],
-        ),
+        color: ThemeColors.backgroundCard(context),
         borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
         border: Border.all(
           color: isPositive
@@ -404,7 +397,7 @@ class HomeScreen extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.shadowLight,
+            color: ThemeColors.shadowLight(context),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -431,6 +424,7 @@ class HomeScreen extends StatelessWidget {
                 Text(
                   pair,
                   style: AppTextStyles.titleMedium.copyWith(
+                    color: AppColors.black,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -441,28 +435,12 @@ class HomeScreen extends StatelessWidget {
           // Result with enhanced styling
           Expanded(
             flex: 2,
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.sm,
-                vertical: AppSpacing.xs,
-              ),
-              decoration: BoxDecoration(
-                color: (isPositive ? AppColors.success : AppColors.error)
-                    .withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(AppSpacing.radiusSmall),
-                border: Border.all(
-                  color: (isPositive ? AppColors.success : AppColors.error)
-                      .withValues(alpha: 0.3),
-                  width: 1,
-                ),
-              ),
-              child: Text(
-                result,
-                textAlign: TextAlign.center,
-                style: AppTextStyles.titleMedium.copyWith(
-                  color: isPositive ? AppColors.success : AppColors.error,
-                  fontWeight: FontWeight.bold,
-                ),
+            child: Text(
+              result,
+              textAlign: TextAlign.center,
+              style: AppTextStyles.titleMedium.copyWith(
+                color: isPositive ? AppColors.success : AppColors.error,
+                fontWeight: FontWeight.bold,
               ),
             ),
           ),
@@ -473,7 +451,7 @@ class HomeScreen extends StatelessWidget {
             child: Text(
               date,
               style: AppTextStyles.bodyMedium.copyWith(
-                color: AppColors.textSecondary,
+                color: AppColors.black,
                 fontWeight: FontWeight.w500,
               ),
             ),

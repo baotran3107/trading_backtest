@@ -1,4 +1,4 @@
-import 'package:trading_game/model/candle_model.dart';
+import 'package:trade_lab/model/candle_model.dart';
 
 /// Represents a complete chart with symbol and candlestick data
 class ChartModel {
