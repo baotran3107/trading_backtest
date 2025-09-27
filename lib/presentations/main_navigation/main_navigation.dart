@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 import '../home_screen/home_screen.dart';
 import '../performance_screen/performance_screen.dart';
-import '../backtest_screen/backtest_screen.dart';
 import '../education_screen/education_screen.dart';
 import '../settings_screen/settings_screen.dart';
 
@@ -22,7 +21,6 @@ class _MainNavigationState extends State<MainNavigation>
   final List<Widget> _screens = [
     const HomeScreen(),
     const PerformanceScreen(),
-    const BackTestScreen(),
     const EducationScreen(),
     const SettingsScreen(),
   ];
@@ -32,26 +30,25 @@ class _MainNavigationState extends State<MainNavigation>
       icon: Icons.home_outlined,
       activeIcon: Icons.home,
       label: 'Home',
+      color: Colors.blue,
     ),
     NavigationItem(
       icon: Icons.trending_up_outlined,
       activeIcon: Icons.trending_up,
       label: 'Performance',
-    ),
-    NavigationItem(
-      icon: Icons.show_chart_outlined,
-      activeIcon: Icons.show_chart,
-      label: 'Backtest',
+      color: Colors.green,
     ),
     NavigationItem(
       icon: Icons.school_outlined,
       activeIcon: Icons.school,
       label: 'Education',
+      color: Colors.orange,
     ),
     NavigationItem(
       icon: Icons.settings_outlined,
       activeIcon: Icons.settings,
       label: 'Settings',
+      color: Colors.purple,
     ),
   ];
 
@@ -85,91 +82,84 @@ class _MainNavigationState extends State<MainNavigation>
 
   Widget _buildAnimatedNotchBottomBar(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+      height: 70,
       decoration: BoxDecoration(
         color: AppColors.background,
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(35),
         boxShadow: [
           BoxShadow(
-            color: AppColors.shadowLight,
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 20,
+            offset: const Offset(0, -5),
+          ),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, -2),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(35),
         child: AnimatedBuilder(
           animation: _animation,
           builder: (context, child) {
             return Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: List.generate(_navigationItems.length, (index) {
                 final item = _navigationItems[index];
                 final isSelected = _currentIndex == index;
-                final isCenter = index == 2; // Backtest is the center item
 
-                return GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _currentIndex = index;
-                    });
-                    _animationController.reset();
-                    _animationController.forward();
-                  },
-                  child: Container(
-                    width: isCenter ? 60 : 50,
-                    height: 60,
-                    margin: const EdgeInsets.symmetric(vertical: 8),
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        // Animated background for center item
-                        if (isCenter && isSelected)
-                          AnimatedContainer(
-                            duration: const Duration(milliseconds: 300),
-                            width: 56,
-                            height: 56,
-                            decoration: BoxDecoration(
-                              color: AppColors.primary,
-                              borderRadius: BorderRadius.circular(28),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppColors.primary.withOpacity(0.3),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                          ),
-                        // Icon
-                        Icon(
-                          isSelected ? item.activeIcon : item.icon,
-                          color: isCenter && isSelected
-                              ? Colors.white
-                              : isSelected
-                                  ? AppColors.primary
-                                  : AppColors.textTertiary,
-                          size: isCenter ? 24 : 22,
-                        ),
-                        // Label
-                        Positioned(
-                          bottom: 2,
-                          child: AnimatedDefaultTextStyle(
+                return Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _currentIndex = index;
+                      });
+                      _animationController.reset();
+                      _animationController.forward();
+                    },
+                    child: Container(
+                      height: 70,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          // Icon with scale animation
+                          AnimatedScale(
+                            scale: isSelected ? 1.1 : 1.0,
                             duration: const Duration(milliseconds: 200),
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: isSelected
-                                  ? FontWeight.w600
-                                  : FontWeight.w400,
+                            child: Icon(
+                              isSelected ? item.activeIcon : item.icon,
                               color: isSelected
-                                  ? AppColors.primary
+                                  ? item.color
                                   : AppColors.textTertiary,
+                              size: isSelected ? 26 : 24,
                             ),
-                            child: Text(item.label),
                           ),
-                        ),
-                      ],
+                          // Label with fade animation
+                          Positioned(
+                            bottom: 8,
+                            child: AnimatedOpacity(
+                              opacity: isSelected ? 1.0 : 0.7,
+                              duration: const Duration(milliseconds: 200),
+                              child: AnimatedDefaultTextStyle(
+                                duration: const Duration(milliseconds: 200),
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: isSelected
+                                      ? FontWeight.w600
+                                      : FontWeight.w500,
+                                  color: isSelected
+                                      ? item.color
+                                      : AppColors.textTertiary,
+                                ),
+                                child: Text(item.label),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 );
@@ -186,10 +176,12 @@ class NavigationItem {
   final IconData icon;
   final IconData activeIcon;
   final String label;
+  final Color color;
 
   NavigationItem({
     required this.icon,
     required this.activeIcon,
     required this.label,
+    required this.color,
   });
 }
