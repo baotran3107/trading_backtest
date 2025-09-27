@@ -1,9 +1,10 @@
 import '../model/candle_model.dart';
-import '../services/data_import_service.dart';
+import '../services/isolate_data_import_service.dart';
 
 /// Repository for managing trading data
 class TradingDataRepository {
-  final DataImportService _dataImportService = DataImportService();
+  final IsolateDataImportService _dataImportService =
+      IsolateDataImportService();
 
   List<CandleStick>? _cachedData;
   Map<String, dynamic>? _cachedMetadata;
@@ -66,6 +67,11 @@ class TradingDataRepository {
   void clearCache() {
     _cachedData = null;
     _cachedMetadata = null;
+  }
+
+  /// Dispose resources including isolate
+  void dispose() {
+    _dataImportService.dispose();
   }
 
   /// Gets data count without loading all data
