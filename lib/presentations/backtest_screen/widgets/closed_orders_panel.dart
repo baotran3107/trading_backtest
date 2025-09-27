@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../model/closed_order_model.dart';
+import '../../../theme/app_colors.dart';
+import '../../../theme/app_text_styles.dart';
+import '../../../theme/app_spacing.dart';
 
 class ClosedOrdersPanel extends StatelessWidget {
   final List<ClosedOrder> closedOrders;
@@ -15,14 +18,11 @@ class ClosedOrdersPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     if (closedOrders.isEmpty) {
       return Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AppSpacing.screenMargin),
         child: const Center(
           child: Text(
             'No closed orders yet',
-            style: TextStyle(
-              color: Colors.grey,
-              fontSize: 14,
-            ),
+            style: AppTextStyles.bodyMedium,
           ),
         ),
       );
@@ -38,7 +38,7 @@ class ClosedOrdersPanel extends StatelessWidget {
         : 0.0;
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.screenMargin),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -48,30 +48,26 @@ class ClosedOrdersPanel extends StatelessWidget {
             children: [
               Text(
                 'Closed Orders (${closedOrders.length})',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: AppTextStyles.titleMedium,
               ),
               if (onClear != null)
                 TextButton(
                   onPressed: onClear,
                   child: const Text(
                     'Clear',
-                    style: TextStyle(color: Colors.red),
+                    style: TextStyle(color: AppColors.error),
                   ),
                 ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
 
           // P&L Summary
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(AppSpacing.lg),
             decoration: BoxDecoration(
-              color: Colors.grey[800],
-              borderRadius: BorderRadius.circular(8),
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -81,22 +77,22 @@ class ClosedOrdersPanel extends StatelessWidget {
                   totalPnL >= 0
                       ? '+${totalPnL.toStringAsFixed(2)}'
                       : totalPnL.toStringAsFixed(2),
-                  totalPnL >= 0 ? Colors.green : Colors.red,
+                  totalPnL >= 0 ? AppColors.bullish : AppColors.bearish,
                 ),
                 _buildSummaryItem(
                   'Win Rate',
                   '${winRate.toStringAsFixed(1)}%',
-                  Colors.white,
+                  AppColors.textPrimary,
                 ),
                 _buildSummaryItem(
                   'Trades',
                   '${closedOrders.length}',
-                  Colors.white,
+                  AppColors.textPrimary,
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.screenMargin),
 
           // Orders list
           Expanded(
@@ -119,19 +115,12 @@ class ClosedOrdersPanel extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(
-            color: Colors.grey,
-            fontSize: 12,
-          ),
+          style: AppTextStyles.bodySmall,
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: AppSpacing.sm),
         Text(
           value,
-          style: TextStyle(
-            color: color,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
+          style: AppTextStyles.priceMedium.copyWith(color: color),
         ),
       ],
     );
@@ -139,11 +128,11 @@ class ClosedOrdersPanel extends StatelessWidget {
 
   Widget _buildOrderItem(ClosedOrder order) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        color: Colors.grey[900],
-        borderRadius: BorderRadius.circular(8),
+        color: AppColors.backgroundTertiary,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
         border: Border.all(
           color: order.color.withOpacity(0.3),
           width: 1,
@@ -153,21 +142,21 @@ class ClosedOrdersPanel extends StatelessWidget {
         children: [
           // Order type and close reason
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm, vertical: AppSpacing.sm),
             decoration: BoxDecoration(
               color: order.color.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusSmall),
             ),
             child: Text(
               '${order.entryType} ${order.closeReason}',
-              style: TextStyle(
+              style: AppTextStyles.labelSmall.copyWith(
                 color: order.color,
-                fontSize: 12,
                 fontWeight: FontWeight.bold,
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.lg),
 
           // Price info
           Expanded(
@@ -176,18 +165,11 @@ class ClosedOrdersPanel extends StatelessWidget {
               children: [
                 Text(
                   '${order.entryPriceText} → ${order.exitPriceText}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: AppTextStyles.bodyMedium,
                 ),
                 Text(
                   '${order.lotSizeText} lots • ${_formatDuration(order.duration)}',
-                  style: const TextStyle(
-                    color: Colors.grey,
-                    fontSize: 12,
-                  ),
+                  style: AppTextStyles.bodySmall,
                 ),
               ],
             ),
@@ -196,10 +178,8 @@ class ClosedOrdersPanel extends StatelessWidget {
           // P&L
           Text(
             order.pnlText,
-            style: TextStyle(
-              color: order.isProfitable ? Colors.green : Colors.red,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
+            style: AppTextStyles.priceSmall.copyWith(
+              color: order.isProfitable ? AppColors.bullish : AppColors.bearish,
             ),
           ),
         ],

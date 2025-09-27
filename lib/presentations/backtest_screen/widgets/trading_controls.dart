@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../../theme/app_colors.dart';
+import '../../../theme/app_text_styles.dart';
+import '../../../theme/app_spacing.dart';
 
 class TradingControls extends StatelessWidget {
   final double currentPrice;
@@ -24,34 +27,34 @@ class TradingControls extends StatelessWidget {
     final buyPrice = currentPrice + 0.05;
 
     return Container(
-      height: 48,
-      margin: const EdgeInsets.symmetric(horizontal: 16),
+      height: AppSpacing.buttonHeightLarge,
+      margin: const EdgeInsets.symmetric(horizontal: AppSpacing.screenMargin),
       child: Row(
         children: [
           SizedBox(
             width: 84,
-            height: 48,
+            height: AppSpacing.buttonHeightLarge,
             child: _buildTradeButton(
               label: 'SELL',
               price: sellPrice,
-              color: Colors.red[600]!,
-              textColor: Colors.redAccent,
+              color: AppColors.bearish,
+              textColor: AppColors.bearishLight,
               onTap: onSell,
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.lg),
           Expanded(
             child: _buildLotSizeStepper(context),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.lg),
           SizedBox(
             width: 84,
-            height: 48,
+            height: AppSpacing.buttonHeightLarge,
             child: _buildTradeButton(
               label: 'BUY',
               price: buyPrice,
-              color: Colors.green[600]!,
-              textColor: Colors.greenAccent,
+              color: AppColors.bullish,
+              textColor: AppColors.bullishLight,
               onTap: onBuy,
             ),
           ),
@@ -67,14 +70,14 @@ class TradingControls extends StatelessWidget {
     required Color textColor,
     required VoidCallback onTap,
   }) {
-    final Color darker = Color.lerp(color, Colors.black, 0.25)!;
+    final Color darker = AppColors.lerp(color, Colors.black, 0.25);
     final bool isBuy = label.toUpperCase() == 'BUY';
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLarge),
         child: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -82,16 +85,16 @@ class TradingControls extends StatelessWidget {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(AppSpacing.radiusLarge),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.25),
+                color: AppColors.shadow,
                 blurRadius: 4,
                 offset: const Offset(0, 2),
               ),
             ],
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 8),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -99,18 +102,15 @@ class TradingControls extends StatelessWidget {
                 isBuy
                     ? Icons.arrow_upward_rounded
                     : Icons.arrow_downward_rounded,
-                color: Colors.white,
-                size: 16,
+                color: AppColors.textPrimary,
+                size: AppSpacing.iconSmall,
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: AppSpacing.sm),
               Flexible(
                 child: Text(
                   label,
-                  style: TextStyle(
+                  style: AppTextStyles.buttonSmall.copyWith(
                     color: textColor,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.5,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -156,12 +156,12 @@ class TradingControls extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.grey[850],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[600]!, width: 1),
+        color: AppColors.backgroundCard,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLarge),
+        border: Border.all(color: AppColors.border, width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
+            color: AppColors.shadowDark,
             blurRadius: 6,
             offset: const Offset(0, 3),
           ),
@@ -176,19 +176,11 @@ class TradingControls extends StatelessWidget {
               children: [
                 const Text(
                   'LOT SIZE',
-                  style: TextStyle(
-                    color: Colors.grey,
-                    fontSize: 9,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: AppTextStyles.overline,
                 ),
                 Text(
                   lotSize.toString(),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: AppTextStyles.priceSmall,
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
@@ -211,12 +203,12 @@ class TradingControls extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: onPressed,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppSpacing.radiusLarge),
           child: Center(
             child: Icon(
               icon,
-              color: Colors.white,
-              size: 20,
+              color: AppColors.textPrimary,
+              size: AppSpacing.iconMedium,
             ),
           ),
         ),

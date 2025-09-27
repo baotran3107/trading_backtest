@@ -1,0 +1,139 @@
+import 'package:flutter/material.dart';
+
+/// Centralized color definitions for the trading game app
+class AppColors {
+  // Private constructor to prevent instantiation
+  AppColors._();
+
+  // Primary Colors
+  static const Color primary = Color(0xFF3B82F6);
+  static const Color primaryDark = Color(0xFF2563EB);
+  static const Color primaryLight = Color(0xFF60A5FA);
+
+  // Secondary Colors
+  static const Color secondary = Color(0xFF10B981);
+  static const Color secondaryDark = Color(0xFF059669);
+  static const Color secondaryLight = Color(0xFF34D399);
+
+  // Background Colors
+  static const Color background = Color(0xFFFFFFFF);
+  static const Color backgroundSecondary = Color(0xFFF8F9FA);
+  static const Color backgroundTertiary = Color(0xFFF1F3F4);
+  static const Color backgroundCard = Color(0xFFFFFFFF);
+  static const Color backgroundCardHover = Color(0xFFF1F3F4);
+
+  // Surface Colors
+  static const Color surface = Color(0xFFF8F9FA);
+  static const Color surfaceVariant = Color(0xFFF1F3F4);
+  static const Color surfaceContainer = Color(0xFFFFFFFF);
+
+  // Text Colors
+  static const Color textPrimary = Color(0xFF1F2937);
+  static const Color textSecondary = Color(0xFF4B5563);
+  static const Color textTertiary = Color(0xFF6B7280);
+  static const Color textDisabled = Color(0xFF9CA3AF);
+  static const Color textHint = Color(0xFF9CA3AF);
+
+  // Trading Colors
+  static const Color bullish = Color(0xFF26A69A);
+  static const Color bullishLight = Color(0xFF4DD0E1);
+  static const Color bullishDark = Color(0xFF00695C);
+  static const Color bearish = Color(0xFFEF5350);
+  static const Color bearishLight = Color(0xFFFF8A80);
+  static const Color bearishDark = Color(0xFFC62828);
+  static const Color doji = Color(0xFF78909C);
+  static const Color wick = Color(0xFF90A4AE);
+
+  // Status Colors
+  static const Color success = Color(0xFF10B981);
+  static const Color successLight = Color(0xFFD1FAE5);
+  static const Color successDark = Color(0xFF065F46);
+  static const Color error = Color(0xFFEF4444);
+  static const Color errorLight = Color(0xFFFEE2E2);
+  static const Color errorDark = Color(0xFF991B1B);
+  static const Color warning = Color(0xFFF59E0B);
+  static const Color warningLight = Color(0xFFFEF3C7);
+  static const Color warningDark = Color(0xFF92400E);
+  static const Color info = Color(0xFF3B82F6);
+  static const Color infoLight = Color(0xFFDBEAFE);
+  static const Color infoDark = Color(0xFF1E40AF);
+
+  // Border Colors
+  static const Color border = Color(0xFFE5E7EB);
+  static const Color borderLight = Color(0xFFF3F4F6);
+  static const Color borderDark = Color(0xFFD1D5DB);
+  static const Color borderFocus = Color(0xFF3B82F6);
+
+  // Shadow Colors
+  static const Color shadow = Color(0x40000000);
+  static const Color shadowLight = Color(0x20000000);
+  static const Color shadowDark = Color(0x60000000);
+
+  // Chart Colors
+  static const Color chartBackground = Color(0xFFFFFFFF);
+  static const Color chartGrid = Color(0xFFF3F4F6);
+  static const Color chartText = Color(0xFF4B5563);
+  static const Color chartAxis = Color(0xFF9CA3AF);
+
+  // Button Colors
+  static const Color buttonPrimary = Color(0xFF3B82F6);
+  static const Color buttonPrimaryHover = Color(0xFF2563EB);
+  static const Color buttonSecondary = Color(0xFF6B7280);
+  static const Color buttonSecondaryHover = Color(0xFF4B5563);
+  static const Color buttonSuccess = Color(0xFF10B981);
+  static const Color buttonSuccessHover = Color(0xFF059669);
+  static const Color buttonDanger = Color(0xFFEF4444);
+  static const Color buttonDangerHover = Color(0xFFDC2626);
+
+  // Input Colors
+  static const Color inputBackground = Color(0xFFFFFFFF);
+  static const Color inputBorder = Color(0xFFE5E7EB);
+  static const Color inputBorderFocus = Color(0xFF3B82F6);
+  static const Color inputText = Color(0xFF1F2937);
+  static const Color inputPlaceholder = Color(0xFF9CA3AF);
+
+  // Overlay Colors
+  static const Color overlay = Color(0x80000000);
+  static const Color overlayLight = Color(0x40000000);
+  static const Color overlayDark = Color(0xCC000000);
+
+  // Gradient Colors
+  static const LinearGradient primaryGradient = LinearGradient(
+    colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const LinearGradient successGradient = LinearGradient(
+    colors: [Color(0xFF10B981), Color(0xFF059669)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const LinearGradient errorGradient = LinearGradient(
+    colors: [Color(0xFFEF4444), Color(0xFFDC2626)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const LinearGradient warningGradient = LinearGradient(
+    colors: [Color(0xFFF59E0B), Color(0xFFD97706)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const LinearGradient infoGradient = LinearGradient(
+    colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  // Utility methods
+  static Color withOpacity(Color color, double opacity) {
+    return color.withOpacity(opacity);
+  }
+
+  static Color lerp(Color a, Color b, double t) {
+    return Color.lerp(a, b, t)!;
+  }
+}

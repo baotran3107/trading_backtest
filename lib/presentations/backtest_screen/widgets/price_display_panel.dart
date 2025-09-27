@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../../theme/app_colors.dart';
+import '../../../theme/app_text_styles.dart';
+import '../../../theme/app_spacing.dart';
 
 class PriceDisplayPanel extends StatelessWidget {
   final double? currentPrice;
@@ -32,18 +35,19 @@ class PriceDisplayPanel extends StatelessWidget {
         : 0.0;
 
     final isPositive = priceChange >= 0;
-    final changeColor = isPositive ? Colors.greenAccent : Colors.redAccent;
+    final changeColor = isPositive ? AppColors.bullish : AppColors.bearish;
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.screenMargin, vertical: AppSpacing.sm),
+      padding: const EdgeInsets.all(AppSpacing.screenMargin),
       decoration: BoxDecoration(
-        color: Colors.grey[850],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[700]!, width: 1),
+        color: AppColors.backgroundCard,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLarge),
+        border: Border.all(color: AppColors.border, width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
+            color: AppColors.shadowDark,
             blurRadius: 6,
             offset: const Offset(0, 3),
           ),
@@ -61,20 +65,13 @@ class PriceDisplayPanel extends StatelessWidget {
                   children: [
                     Text(
                       symbol,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: AppTextStyles.headlineSmall,
                     ),
                     if (description != null) ...[
-                      const SizedBox(height: 2),
+                      const SizedBox(height: AppSpacing.micro),
                       Text(
                         description!,
-                        style: TextStyle(
-                          color: Colors.grey[400],
-                          fontSize: 12,
-                        ),
+                        style: AppTextStyles.bodySmall,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -89,23 +86,19 @@ class PriceDisplayPanel extends StatelessWidget {
                   children: [
                     if (isLoading)
                       const SizedBox(
-                        width: 20,
-                        height: 20,
+                        width: AppSpacing.iconMedium,
+                        height: AppSpacing.iconMedium,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: Colors.greenAccent,
+                          color: AppColors.bullish,
                         ),
                       )
                     else if (currentPrice != null) ...[
                       Text(
                         currentPrice!.toStringAsFixed(2),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: AppTextStyles.priceLarge,
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: AppSpacing.sm),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
@@ -114,35 +107,29 @@ class PriceDisplayPanel extends StatelessWidget {
                                 ? Icons.trending_up
                                 : Icons.trending_down,
                             color: changeColor,
-                            size: 16,
+                            size: AppSpacing.iconSmall,
                           ),
-                          const SizedBox(width: 4),
+                          const SizedBox(width: AppSpacing.sm),
                           Text(
                             '${isPositive ? '+' : ''}${priceChange.toStringAsFixed(2)}',
-                            style: TextStyle(
-                              color: changeColor,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                            ),
+                            style: isPositive
+                                ? AppTextStyles.changePositive
+                                : AppTextStyles.changeNegative,
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: AppSpacing.sm),
                           Text(
                             '(${isPositive ? '+' : ''}${priceChangePercent.toStringAsFixed(2)}%)',
-                            style: TextStyle(
-                              color: changeColor,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                            ),
+                            style: isPositive
+                                ? AppTextStyles.changePositive
+                                : AppTextStyles.changeNegative,
                           ),
                         ],
                       ),
                     ] else
                       Text(
                         '--',
-                        style: TextStyle(
-                          color: Colors.grey[400],
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
+                        style: AppTextStyles.priceLarge.copyWith(
+                          color: AppColors.textTertiary,
                         ),
                       ),
                   ],
@@ -153,13 +140,14 @@ class PriceDisplayPanel extends StatelessWidget {
 
           // P&L Summary row
           if (totalTrades > 0) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.lg),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
               decoration: BoxDecoration(
-                color: Colors.grey[800],
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey[600]!, width: 0.5),
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
+                border: Border.all(color: AppColors.borderLight, width: 0.5),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -169,17 +157,17 @@ class PriceDisplayPanel extends StatelessWidget {
                     totalPnL >= 0
                         ? '+${totalPnL.toStringAsFixed(2)}'
                         : totalPnL.toStringAsFixed(2),
-                    totalPnL >= 0 ? Colors.green : Colors.red,
+                    totalPnL >= 0 ? AppColors.bullish : AppColors.bearish,
                   ),
                   _buildPnLItem(
                     'Win Rate',
                     '${winRate.toStringAsFixed(1)}%',
-                    Colors.white,
+                    AppColors.textPrimary,
                   ),
                   _buildPnLItem(
                     'Trades',
                     '$totalTrades',
-                    Colors.white,
+                    AppColors.textPrimary,
                   ),
                 ],
               ),
@@ -195,20 +183,12 @@ class PriceDisplayPanel extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(
-            color: Colors.grey,
-            fontSize: 10,
-            fontWeight: FontWeight.w500,
-          ),
+          style: AppTextStyles.captionBold,
         ),
-        const SizedBox(height: 2),
+        const SizedBox(height: AppSpacing.micro),
         Text(
           value,
-          style: TextStyle(
-            color: color,
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-          ),
+          style: AppTextStyles.priceSmall.copyWith(color: color),
         ),
       ],
     );
