@@ -25,6 +25,7 @@ class _BackTestScreenState extends State<BackTestScreen> {
   List<CandleStick>? _xauusdData;
   Map<String, dynamic>? _metadata;
   double? _previousPrice;
+  final GlobalKey _chartKey = GlobalKey();
 
   // Trading controls state
   double _lotSize = 0.01;
@@ -710,6 +711,7 @@ class _BackTestScreenState extends State<BackTestScreen> {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(12),
             child: StockChart(
+              key: _chartKey,
               candles: state.visibleCandles,
               height: double.infinity,
               candleWidth: 6,
@@ -825,8 +827,11 @@ class _BackTestScreenState extends State<BackTestScreen> {
               context.read<BacktestBloc>().add(const BacktestStepBack()),
           onPlayPause: () =>
               context.read<BacktestBloc>().add(const BacktestPlayToggled()),
-          onNext: () =>
-              context.read<BacktestBloc>().add(const BacktestStepNext()),
+          onNext: () {
+            // Reset user interaction to allow auto-scroll after zoom
+            StockChart.resetUserInteraction(_chartKey);
+            context.read<BacktestBloc>().add(const BacktestStepNext());
+          },
         );
       },
     );

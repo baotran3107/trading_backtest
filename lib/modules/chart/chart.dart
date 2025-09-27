@@ -12,6 +12,14 @@ enum _DragType { none, sl, tp }
 
 /// A comprehensive stock chart widget that displays candlestick data with advanced features
 class StockChart extends StatefulWidget {
+  /// Reset user interaction flag to allow auto-scroll
+  static void resetUserInteraction(GlobalKey key) {
+    final state = key.currentState;
+    if (state is _StockChartState) {
+      state.resetUserInteraction();
+    }
+  }
+
   final List<CandleStick> candles;
   final double height;
   final double candleWidth;
@@ -167,6 +175,11 @@ class _StockChartState extends State<StockChart> with TickerProviderStateMixin {
   void dispose() {
     _momentumController.dispose();
     super.dispose();
+  }
+
+  /// Reset user interaction flag to allow auto-scroll
+  void resetUserInteraction() {
+    _userInteracted = false;
   }
 
   @override
