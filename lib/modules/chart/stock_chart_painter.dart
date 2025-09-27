@@ -200,7 +200,7 @@ class StockChartPainter extends CustomPainter {
     // Track used Y positions to prevent label overlap
     final List<double> usedYPositions = [];
 
-    void drawLine(double price, Color color, String label) {
+    void drawLine(double price, Color color, String label, double? pnl) {
       final double y =
           (chartHeight - ((price - minPrice) / priceRange) * chartHeight)
               .clamp(0.0, chartHeight);
@@ -212,26 +212,28 @@ class StockChartPainter extends CustomPainter {
 
       canvas.drawLine(Offset(0, y), Offset(effectiveChartWidth, y), linePaint);
 
-      final textPainter = TextPainter(textDirection: TextDirection.ltr);
-      textPainter.text = TextSpan(
-        text: '$label ${price.toStringAsFixed(3)}',
+      // Draw price label in the price axis area
+      final priceTextPainter = TextPainter(textDirection: TextDirection.ltr);
+      priceTextPainter.text = TextSpan(
+        text: '${label} ${price.toStringAsFixed(2)}',
         style: labelTextStyle.copyWith(
           color: Colors.white,
-          fontSize: 11, // Slightly larger for better visibility
+          fontSize: 11,
           fontWeight: FontWeight.w600,
         ),
       );
-      textPainter.layout();
+      priceTextPainter.layout();
 
-      const double hPad = 8.0; // Increased padding
+      const double hPad = 8.0;
       const double vPad = 4.0;
-      final double boxWidth = textPainter.width + hPad * 2;
-      final double boxHeight = textPainter.height + vPad * 2;
-      final double boxLeft = size.width - ChartConstants.priceLabelsWidth + 2.0;
+      final double priceBoxWidth = priceTextPainter.width + hPad * 2;
+      final double priceBoxHeight = priceTextPainter.height + vPad * 2;
+      final double priceBoxLeft =
+          size.width - ChartConstants.priceLabelsWidth - 2.0;
 
       // Adjust Y position to avoid overlap with other labels
       double adjustedY = y;
-      const double minSpacing = 20.0; // Minimum spacing between labels
+      const double minSpacing = 20.0;
       for (final usedY in usedYPositions) {
         if ((adjustedY - usedY).abs() < minSpacing) {
           if (adjustedY < usedY) {
@@ -242,29 +244,78 @@ class StockChartPainter extends CustomPainter {
         }
       }
 
-      final double boxTop =
-          (adjustedY - boxHeight / 2).clamp(0.0, chartHeight - boxHeight);
-      final Rect rect = Rect.fromLTWH(boxLeft, boxTop, boxWidth, boxHeight);
+      final double priceBoxTop = (adjustedY - priceBoxHeight / 2)
+          .clamp(0.0, chartHeight - priceBoxHeight);
+      final Rect priceRect = Rect.fromLTWH(
+          priceBoxLeft, priceBoxTop, priceBoxWidth, priceBoxHeight);
 
-      // Draw background with better contrast
+      // Draw background for price label
       canvas.drawRRect(
-        RRect.fromRectAndRadius(rect, const Radius.circular(6.0)),
+        RRect.fromRectAndRadius(priceRect, const Radius.circular(6.0)),
         Paint()..color = color.withOpacity(0.95),
       );
 
-      // Draw border for better visibility
+      // Draw border for price label
       canvas.drawRRect(
-        RRect.fromRectAndRadius(rect, const Radius.circular(6.0)),
+        RRect.fromRectAndRadius(priceRect, const Radius.circular(6.0)),
         Paint()
           ..color = Colors.white.withOpacity(0.3)
           ..style = PaintingStyle.stroke
           ..strokeWidth = 1.0,
       );
 
-      textPainter.paint(
+      priceTextPainter.paint(
         canvas,
-        Offset(boxLeft + hPad, boxTop + vPad),
+        Offset(priceBoxLeft + hPad, priceBoxTop + vPad),
       );
+
+      // Draw PnL value on the line (above the line a bit) if PnL exists
+      if (pnl != null && pnl != 0.0) {
+        final pnlTextPainter = TextPainter(textDirection: TextDirection.ltr);
+        pnlTextPainter.text = TextSpan(
+          text: '${pnl >= 0 ? '+' : ''}${pnl.toStringAsFixed(2)}',
+          style: labelTextStyle.copyWith(
+            color: Colors.white,
+            fontSize: 10,
+            fontWeight: FontWeight.w500,
+          ),
+        );
+        pnlTextPainter.layout();
+
+        // Position PnL label near the price axis (right side)
+        final double pnlX = size.width - ChartConstants.priceLabelsWidth - 30;
+        final double pnlY = y; // At the same Y level as the price label
+        final double pnlBoxWidth = pnlTextPainter.width + 6.0;
+        final double pnlBoxHeight = pnlTextPainter.height + 4.0;
+        final double pnlBoxLeft = pnlX - pnlBoxWidth / 2;
+        final double pnlBoxTop = pnlY - pnlBoxHeight / 2;
+
+        final Rect pnlRect =
+            Rect.fromLTWH(pnlBoxLeft, pnlBoxTop, pnlBoxWidth, pnlBoxHeight);
+
+        // Draw background for PnL label
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(pnlRect, const Radius.circular(4.0)),
+          Paint()
+            ..color = pnl >= 0
+                ? Colors.green.withOpacity(0.9)
+                : Colors.red.withOpacity(0.9),
+        );
+
+        // Draw border for PnL label
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(pnlRect, const Radius.circular(4.0)),
+          Paint()
+            ..color = Colors.white.withOpacity(0.3)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 0.8,
+        );
+
+        pnlTextPainter.paint(
+          canvas,
+          Offset(pnlBoxLeft + 3.0, pnlBoxTop + 2.0),
+        );
+      }
 
       // Track this Y position to avoid future overlaps
       usedYPositions.add(adjustedY);
@@ -273,18 +324,12 @@ class StockChartPainter extends CustomPainter {
     for (int i = 0; i < stopLossPrices.length; i++) {
       final sl = stopLossPrices[i];
       final pnl = i < stopLossPnL.length ? stopLossPnL[i] : 0.0;
-      final pnlText = pnl != 0.0
-          ? ' (${pnl >= 0 ? '+' : ''}${pnl.toStringAsFixed(0)})'
-          : '';
-      drawLine(sl, Colors.orange, 'SL$pnlText');
+      drawLine(sl, Colors.orange, 'SL', pnl != 0.0 ? pnl : null);
     }
     for (int i = 0; i < takeProfitPrices.length; i++) {
       final tp = takeProfitPrices[i];
       final pnl = i < takeProfitPnL.length ? takeProfitPnL[i] : 0.0;
-      final pnlText = pnl != 0.0
-          ? ' (${pnl >= 0 ? '+' : ''}${pnl.toStringAsFixed(0)})'
-          : '';
-      drawLine(tp, Colors.blue, 'TP$pnlText');
+      drawLine(tp, Colors.blue, 'TP', pnl != 0.0 ? pnl : null);
     }
   }
 

@@ -58,6 +58,12 @@ class _BackTestScreenState extends State<BackTestScreen> {
   // Track order IDs for unique identification
   int _orderIdCounter = 0;
 
+  // Track which orders have been closed in the current candle to prevent duplicates
+  final Set<int> _closedInCurrentCandle = {};
+
+  // Track the last processed candle timestamp to detect new candles
+  DateTime? _lastProcessedCandleTime;
+
   // Backtesting state handled by BLoC
 
   @override
@@ -159,13 +165,6 @@ class _BackTestScreenState extends State<BackTestScreen> {
         _takeProfitPrices.add(price + 2.0);
       });
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content:
-            Text('Buy @ ${price?.toStringAsFixed(3) ?? '-'} · $_lotSize lots'),
-        backgroundColor: Colors.green,
-      ),
-    );
   }
 
   /// Handle sell action
@@ -182,13 +181,6 @@ class _BackTestScreenState extends State<BackTestScreen> {
         _takeProfitPrices.add(price - 2.0);
       });
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content:
-            Text('Sell @ ${price?.toStringAsFixed(3) ?? '-'} · $_lotSize lots'),
-        backgroundColor: Colors.red,
-      ),
-    );
   }
 
   double? _currentVisiblePrice() {
@@ -269,52 +261,75 @@ class _BackTestScreenState extends State<BackTestScreen> {
 
   /// Check for price crossings and close orders if needed
   void _checkOrderCrossings() {
-    final currentPrice = _currentVisiblePrice();
-    if (currentPrice == null) return;
+    // Get the latest candle to check high/low prices
+    final latestCandle = _getLatestCandle();
+    if (latestCandle == null) return;
+
+    // Check if this is a new candle - reset closed orders tracking
+    if (_lastProcessedCandleTime != latestCandle.time) {
+      _closedInCurrentCandle.clear();
+      _lastProcessedCandleTime = latestCandle.time;
+    }
 
     final List<int> ordersToClose = [];
 
-    // Check stop loss crossings
+    // Check stop loss crossings using candle high/low
     for (int i = 0; i < _stopLossPrices.length; i++) {
-      if (i >= _entryTypes.length) continue;
+      if (i >= _entryTypes.length || _closedInCurrentCandle.contains(i))
+        continue;
 
       final slPrice = _stopLossPrices[i];
       final entryType = _entryTypes[i];
 
       bool shouldClose = false;
-      if (entryType == 'BUY' && currentPrice <= slPrice) {
-        // BUY order: close if price drops to or below SL
+      double executionPrice = slPrice;
+
+      if (entryType == 'BUY' && latestCandle.low <= slPrice) {
+        // BUY order: close if candle low touches or passes SL
         shouldClose = true;
-      } else if (entryType == 'SELL' && currentPrice >= slPrice) {
-        // SELL order: close if price rises to or above SL
+        // Use the actual SL price as execution price
+        executionPrice = slPrice;
+      } else if (entryType == 'SELL' && latestCandle.high >= slPrice) {
+        // SELL order: close if candle high touches or passes SL
         shouldClose = true;
+        // Use the actual SL price as execution price
+        executionPrice = slPrice;
       }
 
       if (shouldClose) {
         ordersToClose.add(i);
-        _closeOrder(i, slPrice, 'SL');
+        _closedInCurrentCandle.add(i);
+        _closeOrder(i, executionPrice, 'SL');
       }
     }
 
-    // Check take profit crossings
+    // Check take profit crossings using candle high/low
     for (int i = 0; i < _takeProfitPrices.length; i++) {
-      if (i >= _entryTypes.length) continue;
+      if (i >= _entryTypes.length || _closedInCurrentCandle.contains(i))
+        continue;
 
       final tpPrice = _takeProfitPrices[i];
       final entryType = _entryTypes[i];
 
       bool shouldClose = false;
-      if (entryType == 'BUY' && currentPrice >= tpPrice) {
-        // BUY order: close if price rises to or above TP
+      double executionPrice = tpPrice;
+
+      if (entryType == 'BUY' && latestCandle.high >= tpPrice) {
+        // BUY order: close if candle high touches or passes TP
         shouldClose = true;
-      } else if (entryType == 'SELL' && currentPrice <= tpPrice) {
-        // SELL order: close if price drops to or below TP
+        // Use the actual TP price as execution price
+        executionPrice = tpPrice;
+      } else if (entryType == 'SELL' && latestCandle.low <= tpPrice) {
+        // SELL order: close if candle low touches or passes TP
         shouldClose = true;
+        // Use the actual TP price as execution price
+        executionPrice = tpPrice;
       }
 
       if (shouldClose) {
         ordersToClose.add(i);
-        _closeOrder(i, tpPrice, 'TP');
+        _closedInCurrentCandle.add(i);
+        _closeOrder(i, executionPrice, 'TP');
       }
     }
 
@@ -327,6 +342,19 @@ class _BackTestScreenState extends State<BackTestScreen> {
         }
       });
     }
+  }
+
+  /// Get the latest candle for crossing detection
+  CandleStick? _getLatestCandle() {
+    final ctx = context;
+    final blocState = ctx.read<BacktestBloc>().state;
+    if (blocState.visibleCandles.isNotEmpty) {
+      return blocState.visibleCandles.last;
+    }
+    if (_xauusdData?.isNotEmpty == true) {
+      return _xauusdData!.last;
+    }
+    return null;
   }
 
   /// Close an order and store P&L data
@@ -742,12 +770,25 @@ class _BackTestScreenState extends State<BackTestScreen> {
         final currentPrice = state.visibleCandles.isNotEmpty
             ? state.visibleCandles.last.close
             : null;
+
+        // Calculate P&L summary
+        final totalPnL =
+            _closedOrders.fold<double>(0.0, (sum, order) => sum + order.pnl);
+        final profitableTrades =
+            _closedOrders.where((order) => order.isProfitable).length;
+        final winRate = _closedOrders.isNotEmpty
+            ? (profitableTrades / _closedOrders.length) * 100
+            : 0.0;
+
         return PriceDisplayPanel(
           currentPrice: currentPrice,
           previousPrice: _previousPrice,
           symbol: _metadata?['symbol'] ?? 'XAUUSD',
           description: _metadata?['description'],
           isLoading: state.isLoading,
+          totalPnL: totalPnL,
+          totalTrades: _closedOrders.length,
+          winRate: winRate,
         );
       },
     );

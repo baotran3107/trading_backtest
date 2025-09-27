@@ -6,6 +6,9 @@ class PriceDisplayPanel extends StatelessWidget {
   final String symbol;
   final String? description;
   final bool isLoading;
+  final double totalPnL;
+  final int totalTrades;
+  final double winRate;
 
   const PriceDisplayPanel({
     super.key,
@@ -14,6 +17,9 @@ class PriceDisplayPanel extends StatelessWidget {
     required this.symbol,
     this.description,
     this.isLoading = false,
+    this.totalPnL = 0.0,
+    this.totalTrades = 0,
+    this.winRate = 0.0,
   });
 
   @override
@@ -43,102 +49,168 @@ class PriceDisplayPanel extends StatelessWidget {
           ),
         ],
       ),
-      child: Row(
+      child: Column(
         children: [
-          Expanded(
-            flex: 2,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  symbol,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                if (description != null) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    description!,
-                    style: TextStyle(
-                      color: Colors.grey[400],
-                      fontSize: 12,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ],
-            ),
-          ),
-          Expanded(
-            flex: 3,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                if (isLoading)
-                  const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.greenAccent,
-                    ),
-                  )
-                else if (currentPrice != null) ...[
-                  Text(
-                    currentPrice!.toStringAsFixed(2),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Icon(
-                        isPositive ? Icons.trending_up : Icons.trending_down,
-                        color: changeColor,
-                        size: 16,
+          // Price information row
+          Row(
+            children: [
+              Expanded(
+                flex: 2,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      symbol,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
                       ),
-                      const SizedBox(width: 4),
+                    ),
+                    if (description != null) ...[
+                      const SizedBox(height: 2),
                       Text(
-                        '${isPositive ? '+' : ''}${priceChange.toStringAsFixed(2)}',
+                        description!,
                         style: TextStyle(
-                          color: changeColor,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '(${isPositive ? '+' : ''}${priceChangePercent.toStringAsFixed(2)}%)',
-                        style: TextStyle(
-                          color: changeColor,
+                          color: Colors.grey[400],
                           fontSize: 12,
-                          fontWeight: FontWeight.w500,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
-                  ),
-                ] else
-                  Text(
-                    '--',
-                    style: TextStyle(
-                      color: Colors.grey[400],
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-              ],
-            ),
+                  ],
+                ),
+              ),
+              Expanded(
+                flex: 3,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    if (isLoading)
+                      const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.greenAccent,
+                        ),
+                      )
+                    else if (currentPrice != null) ...[
+                      Text(
+                        currentPrice!.toStringAsFixed(2),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Icon(
+                            isPositive
+                                ? Icons.trending_up
+                                : Icons.trending_down,
+                            color: changeColor,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${isPositive ? '+' : ''}${priceChange.toStringAsFixed(2)}',
+                            style: TextStyle(
+                              color: changeColor,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '(${isPositive ? '+' : ''}${priceChangePercent.toStringAsFixed(2)}%)',
+                            style: TextStyle(
+                              color: changeColor,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ] else
+                      Text(
+                        '--',
+                        style: TextStyle(
+                          color: Colors.grey[400],
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
           ),
+
+          // P&L Summary row
+          if (totalTrades > 0) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.grey[800],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey[600]!, width: 0.5),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildPnLItem(
+                    'Total P&L',
+                    totalPnL >= 0
+                        ? '+${totalPnL.toStringAsFixed(2)}'
+                        : totalPnL.toStringAsFixed(2),
+                    totalPnL >= 0 ? Colors.green : Colors.red,
+                  ),
+                  _buildPnLItem(
+                    'Win Rate',
+                    '${winRate.toStringAsFixed(1)}%',
+                    Colors.white,
+                  ),
+                  _buildPnLItem(
+                    'Trades',
+                    '$totalTrades',
+                    Colors.white,
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
+    );
+  }
+
+  Widget _buildPnLItem(String label, String value, Color color) {
+    return Column(
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.grey,
+            fontSize: 10,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: TextStyle(
+            color: color,
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
     );
   }
 }
