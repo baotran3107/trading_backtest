@@ -491,12 +491,7 @@ class _StockChartState extends State<StockChart> with TickerProviderStateMixin {
           chartProvider.updateVerticalScale(scaleFactor);
         }
 
-        void onTimePanUpdate(DragUpdateDetails details) {
-          // Convert horizontal pan delta to scale factor for time scaling
-          final scaleFactor =
-              1.0 + (details.delta.dx * ChartConstants.panSensitivity);
-          chartProvider.updateHorizontalScale(scaleFactor);
-        }
+        // onTimePanUpdate removed - no time axis gestures
 
         // Hover-to-candle tooltip removed per requirement
 
@@ -586,37 +581,7 @@ class _StockChartState extends State<StockChart> with TickerProviderStateMixin {
                 ),
               ),
 
-            // Time labels gesture area (bottom)
-            if (widget.enableInteraction && widget.showTimeLabels)
-              Positioned(
-                left: 0,
-                right: widget.showPriceLabels
-                    ? ChartConstants.priceLabelsWidth
-                    : 0,
-                bottom: 0,
-                height: ChartConstants.timeLabelsHeight,
-                child: GestureDetector(
-                  onPanUpdate: onTimePanUpdate,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.transparent,
-                      border: Border(
-                        top: BorderSide(
-                          color: widget.gridColor.withOpacity(0.3),
-                          width: 1,
-                        ),
-                      ),
-                    ),
-                    child: Center(
-                      child: Icon(
-                        Icons.swap_horiz,
-                        color: widget.textColor.withOpacity(0.3),
-                        size: 16,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+            // Time labels gesture area removed - no scroll/scale on time axis
           ],
         );
       },
