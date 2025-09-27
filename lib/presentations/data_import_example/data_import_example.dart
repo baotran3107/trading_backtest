@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../repository/trading_data_repository.dart';
 import '../../model/candle_model.dart';
+import '../../utils/custom_notification.dart';
 
 /// Example widget demonstrating XAUUSD data import and display
 class DataImportExample extends StatefulWidget {
@@ -268,8 +269,10 @@ class _DataImportExampleState extends State<DataImportExample> {
               child: ElevatedButton.icon(
                 onPressed: () {
                   _repository.clearCache();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Cache cleared')),
+                  context.showCustomNotification(
+                    message: 'Cache cleared',
+                    backgroundColor: Colors.blue,
+                    icon: Icons.clear,
                   );
                 },
                 icon: const Icon(Icons.clear),
@@ -291,10 +294,10 @@ class _DataImportExampleState extends State<DataImportExample> {
                   _sampleData = latestData;
                   _isLoading = false;
                 });
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                      content:
-                          Text('Loaded latest ${latestData.length} records')),
+                context.showCustomNotification(
+                  message: 'Loaded latest ${latestData.length} records',
+                  backgroundColor: Colors.green,
+                  icon: Icons.check_circle,
                 );
               } catch (e) {
                 setState(() {

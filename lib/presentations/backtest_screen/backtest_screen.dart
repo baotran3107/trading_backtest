@@ -4,6 +4,7 @@ import '../../modules/chart/chart.dart';
 import '../../model/candle_model.dart';
 import '../../model/closed_order_model.dart';
 import '../../repository/trading_data_repository.dart';
+import '../../utils/custom_notification.dart';
 import 'widgets/trading_controls.dart';
 import 'widgets/backtesting_controls.dart';
 import 'widgets/price_display_panel.dart';
@@ -388,13 +389,16 @@ class _BackTestScreenState extends State<BackTestScreen> {
     // Show notification
     final pnlText = closedOrder.pnlText;
     final color = closedOrder.isProfitable ? Colors.green : Colors.red;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-            'Order closed: $closeReason @ ${exitPrice.toStringAsFixed(3)} · $pnlText'),
-        backgroundColor: color,
-        duration: const Duration(seconds: 3),
-      ),
+    final icon =
+        closedOrder.isProfitable ? Icons.trending_up : Icons.trending_down;
+
+    context.showCustomNotification(
+      message:
+          'Order closed: $closeReason @ ${exitPrice.toStringAsFixed(3)} · $pnlText',
+      backgroundColor: color,
+      textColor: Colors.white,
+      icon: icon,
+      duration: const Duration(seconds: 3),
     );
   }
 
