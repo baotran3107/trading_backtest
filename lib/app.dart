@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'presentations/welcome_screen/welcome_screen.dart';
 import 'presentations/auth/auth_screen.dart';
 import 'presentations/auth/bloc/auth_bloc.dart';
+import 'presentations/main_navigation/main_navigation.dart';
 import 'repository/trading_data_repository.dart';
 import 'presentations/backtest_screen/bloc/backtest_bloc.dart';
 import 'services/auth_service.dart';
@@ -56,11 +58,60 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class AppInitializer extends StatelessWidget {
+class AppInitializer extends StatefulWidget {
   const AppInitializer({super.key});
 
   @override
+  State<AppInitializer> createState() => _AppInitializerState();
+}
+
+class _AppInitializerState extends State<AppInitializer> {
+  bool _isLoading = true;
+  bool _welcomeCompleted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkWelcomeStatus();
+  }
+
+  Future<void> _checkWelcomeStatus() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final welcomeCompleted = prefs.getBool('welcome_completed') ?? false;
+
+      if (mounted) {
+        setState(() {
+          _welcomeCompleted = welcomeCompleted;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _welcomeCompleted = false;
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    // If welcome not completed, show welcome screen
+    if (!_welcomeCompleted) {
+      return const WelcomeScreen();
+    }
+
+    // If welcome completed, check authentication
     return BlocBuilder<AuthBloc, AuthState>(
       builder: (context, state) {
         if (state is AuthLoading) {
@@ -72,7 +123,7 @@ class AppInitializer extends StatelessWidget {
         }
 
         if (state is AuthAuthenticated) {
-          return const WelcomeScreen();
+          return const MainNavigation();
         }
 
         if (state is AuthUnauthenticated) {
