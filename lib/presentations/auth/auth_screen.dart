@@ -67,6 +67,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
             SnackBar(
               content: Text(state.message),
               backgroundColor: AppColors.error,
+              duration: const Duration(seconds: 4),
             ),
           );
         }
@@ -194,10 +195,17 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                                           ),
                                         ),
                                       )
-                                    : const Icon(
-                                        Icons.login,
-                                        size: 20,
-                                        color: AppColors.primary,
+                                    : Container(
+                                        width: 20,
+                                        height: 20,
+                                        decoration: const BoxDecoration(
+                                          image: DecorationImage(
+                                            image: NetworkImage(
+                                              'https://developers.google.com/identity/images/g-logo.png',
+                                            ),
+                                            fit: BoxFit.contain,
+                                          ),
+                                        ),
                                       ),
                                 label: Text(
                                   isLoading
@@ -205,6 +213,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                                       : 'Continue with Google',
                                   style: AppTextStyles.buttonLarge.copyWith(
                                     color: AppColors.textPrimary,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
                               ),

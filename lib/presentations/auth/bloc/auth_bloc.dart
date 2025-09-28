@@ -18,6 +18,8 @@ class AuthSignInRequested extends AuthEvent {}
 
 class AuthSignOutRequested extends AuthEvent {}
 
+// Removed onboarding flow events
+
 // States
 abstract class AuthState extends Equatable {
   const AuthState();
@@ -40,6 +42,8 @@ class AuthAuthenticated extends AuthState {
 }
 
 class AuthUnauthenticated extends AuthState {}
+
+// Removed onboarding flow state
 
 class AuthError extends AuthState {
   final String message;
@@ -73,8 +77,16 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final currentUser = _authService.currentUser;
 
       if (isLoggedIn && currentUser != null) {
-        final user = UserModel.fromFirebaseUser(currentUser);
-        emit(AuthAuthenticated(user: user));
+        // Try to get user from Firestore first
+        final userModel = await _authService.getCurrentUserModel();
+
+        if (userModel != null) {
+          emit(AuthAuthenticated(user: userModel));
+        } else {
+          // Fallback to Firebase user if Firestore user not found
+          final user = UserModel.fromFirebaseUser(currentUser);
+          emit(AuthAuthenticated(user: user));
+        }
       } else {
         emit(AuthUnauthenticated());
       }
@@ -93,8 +105,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final userCredential = await _authService.signInWithGoogle();
 
       if (userCredential?.user != null) {
-        final user = UserModel.fromFirebaseUser(userCredential!.user!);
-        emit(AuthAuthenticated(user: user));
+        final userModel = await _authService.getCurrentUserModel();
+        if (userModel != null) {
+          emit(AuthAuthenticated(user: userModel));
+        } else {
+          final user = UserModel.fromFirebaseUser(userCredential!.user!);
+          emit(AuthAuthenticated(user: user));
+        }
       } else {
         emit(AuthUnauthenticated());
       }
@@ -116,4 +133,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       emit(AuthError(message: e.toString()));
     }
   }
+
+  // Onboarding flow removed
 }

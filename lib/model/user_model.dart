@@ -7,6 +7,8 @@ class UserModel {
   final String? photoURL;
   final DateTime? createdAt;
   final DateTime? lastLoginAt;
+  final String? provider;
+  final Map<String, dynamic>? preferences;
 
   UserModel({
     required this.uid,
@@ -15,6 +17,8 @@ class UserModel {
     this.photoURL,
     this.createdAt,
     this.lastLoginAt,
+    this.provider,
+    this.preferences,
   });
 
   factory UserModel.fromFirebaseUser(User user) {
@@ -25,6 +29,9 @@ class UserModel {
       photoURL: user.photoURL,
       createdAt: user.metadata.creationTime,
       lastLoginAt: user.metadata.lastSignInTime,
+      provider: user.providerData.isNotEmpty
+          ? user.providerData.first.providerId
+          : null,
     );
   }
 
@@ -36,6 +43,8 @@ class UserModel {
       'photoURL': photoURL,
       'createdAt': createdAt?.millisecondsSinceEpoch,
       'lastLoginAt': lastLoginAt?.millisecondsSinceEpoch,
+      'provider': provider,
+      'preferences': preferences,
     };
   }
 
@@ -51,6 +60,10 @@ class UserModel {
       lastLoginAt: map['lastLoginAt'] != null
           ? DateTime.fromMillisecondsSinceEpoch(map['lastLoginAt'])
           : null,
+      provider: map['provider'],
+      preferences: map['preferences'] != null
+          ? Map<String, dynamic>.from(map['preferences'])
+          : null,
     );
   }
 
@@ -61,6 +74,8 @@ class UserModel {
     String? photoURL,
     DateTime? createdAt,
     DateTime? lastLoginAt,
+    String? provider,
+    Map<String, dynamic>? preferences,
   }) {
     return UserModel(
       uid: uid ?? this.uid,
@@ -69,12 +84,14 @@ class UserModel {
       photoURL: photoURL ?? this.photoURL,
       createdAt: createdAt ?? this.createdAt,
       lastLoginAt: lastLoginAt ?? this.lastLoginAt,
+      provider: provider ?? this.provider,
+      preferences: preferences ?? this.preferences,
     );
   }
 
   @override
   String toString() {
-    return 'UserModel(uid: $uid, email: $email, displayName: $displayName, photoURL: $photoURL, createdAt: $createdAt, lastLoginAt: $lastLoginAt)';
+    return 'UserModel(uid: $uid, email: $email, displayName: $displayName, photoURL: $photoURL, createdAt: $createdAt, lastLoginAt: $lastLoginAt, provider: $provider, preferences: $preferences)';
   }
 
   @override
