@@ -9,7 +9,7 @@ import '../auth/bloc/auth_bloc.dart';
 import '../auth/auth_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
-  const SettingsScreen({Key? key}) : super(key: key);
+  const SettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {

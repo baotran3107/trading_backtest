@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "352832278769-8l3m6l1vb52tp7jicoagjmdvab7qnu3l.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.trading_game",
+            "certificate_hash": "0843fd33fd6d72405d60ceb9cec6c95b399b9936"
+          }
+        },
+        {
           "client_id": "352832278769-0sf1f3e6mn7hl2aa937stpqorr2tbg26.apps.googleusercontent.com",
           "client_type": 3
         }
@@ -29,6 +37,13 @@
             {
               "client_id": "352832278769-0sf1f3e6mn7hl2aa937stpqorr2tbg26.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "352832278769-m875d4u14b6leq78vcl7fh60blnofo77.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.tradingGame"
+              }
             }
           ]
         }
