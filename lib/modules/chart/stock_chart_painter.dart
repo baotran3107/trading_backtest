@@ -139,7 +139,7 @@ class StockChartPainter extends CustomPainter {
       textPainter.text = TextSpan(
         text: text,
         style: labelTextStyle.copyWith(
-          color: Colors.white,
+          color: textColor,
           fontSize: 10,
           fontWeight: FontWeight.w600,
         ),
@@ -165,7 +165,7 @@ class StockChartPainter extends CustomPainter {
       canvas.drawRRect(
         RRect.fromRectAndRadius(rect, const Radius.circular(4.0)),
         Paint()
-          ..color = Colors.black.withOpacity(0.4)
+          ..color = gridColor.withOpacity(0.4)
           ..style = PaintingStyle.stroke
           ..strokeWidth = 0.8,
       );
@@ -217,7 +217,7 @@ class StockChartPainter extends CustomPainter {
       priceTextPainter.text = TextSpan(
         text: '${label} ${price.toStringAsFixed(2)}',
         style: labelTextStyle.copyWith(
-          color: Colors.white,
+          color: textColor,
           fontSize: 11,
           fontWeight: FontWeight.w600,
         ),
@@ -259,7 +259,7 @@ class StockChartPainter extends CustomPainter {
       canvas.drawRRect(
         RRect.fromRectAndRadius(priceRect, const Radius.circular(6.0)),
         Paint()
-          ..color = Colors.white.withOpacity(0.3)
+          ..color = gridColor.withOpacity(0.3)
           ..style = PaintingStyle.stroke
           ..strokeWidth = 1.0,
       );
@@ -275,7 +275,7 @@ class StockChartPainter extends CustomPainter {
         pnlTextPainter.text = TextSpan(
           text: '${pnl >= 0 ? '+' : ''}${pnl.toStringAsFixed(2)}',
           style: labelTextStyle.copyWith(
-            color: Colors.white,
+            color: textColor,
             fontSize: 10,
             fontWeight: FontWeight.w500,
           ),
@@ -306,7 +306,7 @@ class StockChartPainter extends CustomPainter {
         canvas.drawRRect(
           RRect.fromRectAndRadius(pnlRect, const Radius.circular(4.0)),
           Paint()
-            ..color = Colors.white.withOpacity(0.3)
+            ..color = gridColor.withOpacity(0.3)
             ..style = PaintingStyle.stroke
             ..strokeWidth = 0.8,
         );
@@ -467,7 +467,7 @@ class StockChartPainter extends CustomPainter {
 
       canvas.drawRect(
         rect,
-        Paint()..color = const Color(ChartConstants.defaultGridColor),
+        Paint()..color = gridColor.withOpacity(0.1),
       );
 
       // Draw border around price label
@@ -482,7 +482,7 @@ class StockChartPainter extends CustomPainter {
       // Add a subtle shadow effect for depth
       canvas.drawRect(
         Rect.fromLTWH(rect.left + 1, rect.top + 1, rect.width, rect.height),
-        Paint()..color = Colors.black.withOpacity(0.1),
+        Paint()..color = gridColor.withOpacity(0.05),
       );
 
       textPainter.paint(canvas, Offset(rightX, y - textPainter.height / 2));
@@ -535,9 +535,7 @@ class StockChartPainter extends CustomPainter {
       );
       canvas.drawRect(
         rect,
-        Paint()
-          ..color =
-              const Color(ChartConstants.defaultGridColor).withOpacity(0.8),
+        Paint()..color = gridColor.withOpacity(0.1),
       );
 
       // Draw border
@@ -633,7 +631,7 @@ class StockChartPainter extends CustomPainter {
     textPainter.text = TextSpan(
       text: priceText,
       style: labelTextStyle.copyWith(
-        color: Colors.white,
+        color: textColor,
         fontSize: 11,
         fontWeight: FontWeight.w600,
       ),
@@ -662,7 +660,7 @@ class StockChartPainter extends CustomPainter {
 
     // Border for contrast
     final Paint borderPaint = Paint()
-      ..color = Colors.black.withOpacity(0.4)
+      ..color = gridColor.withOpacity(0.4)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 0.8;
     canvas.drawRRect(

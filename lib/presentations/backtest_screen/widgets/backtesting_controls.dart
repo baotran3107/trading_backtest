@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../theme/theme_colors.dart';
 
 class BacktestingControls extends StatelessWidget {
   final bool isPlaying;
@@ -20,28 +21,34 @@ class BacktestingControls extends StatelessWidget {
       height: 56,
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: Colors.grey[850],
+        color: ThemeColors.surfaceContainer(context),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[700]!, width: 1),
+        border: Border.all(color: ThemeColors.border(context), width: 1),
       ),
       child: Row(
         children: [
           _buildControlButton(
+            context,
             icon: Icons.skip_previous,
             onPressed: onBack,
-            color: Colors.blue[600]!,
+            color: ThemeColors.buttonLightPrimary(context),
             tooltip: 'Previous Step',
           ),
           _buildControlButton(
+            context,
             icon: isPlaying ? Icons.pause : Icons.play_arrow,
             onPressed: onPlayPause,
-            color: isPlaying ? Colors.orange[600]! : Colors.green[600]!,
+            color: isPlaying
+                ? ThemeColors.buttonLightWarning(context)
+                : ThemeColors.buttonLightSuccess(context),
+            iconColor: ThemeColors.textPrimary(context),
             tooltip: isPlaying ? 'Pause' : 'Play',
           ),
           _buildControlButton(
+            context,
             icon: Icons.skip_next,
             onPressed: onNext,
-            color: Colors.blue[600]!,
+            color: ThemeColors.buttonLightPrimary(context),
             tooltip: 'Next Step',
           ),
         ],
@@ -49,10 +56,12 @@ class BacktestingControls extends StatelessWidget {
     );
   }
 
-  Widget _buildControlButton({
+  Widget _buildControlButton(
+    BuildContext context, {
     required IconData icon,
     required VoidCallback onPressed,
     required Color color,
+    Color? iconColor,
     required String tooltip,
   }) {
     return Expanded(
@@ -65,11 +74,15 @@ class BacktestingControls extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
             child: Container(
               decoration: BoxDecoration(
-                color: color,
+                color: Colors.white,
+                border: Border.all(
+                  color: ThemeColors.border(context),
+                  width: 1,
+                ),
                 borderRadius: BorderRadius.circular(8),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.3),
+                    color: ThemeColors.shadow(context),
                     blurRadius: 4,
                     offset: const Offset(0, 2),
                   ),
@@ -79,7 +92,7 @@ class BacktestingControls extends StatelessWidget {
                 child: Icon(
                   icon,
                   size: 28,
-                  color: Colors.white,
+                  color: iconColor ?? color,
                 ),
               ),
             ),

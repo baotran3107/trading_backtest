@@ -211,6 +211,76 @@ class ThemeColors {
         : AppColors.overlayDark;
   }
 
+  /// Get primary color based on theme mode
+  static Color primary(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? AppColors.primary
+        : AppColors.primary;
+  }
+
+  /// Get success color based on theme mode
+  static Color success(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? AppColors.success
+        : AppColors.success;
+  }
+
+  /// Get warning color based on theme mode
+  static Color warning(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? AppColors.warning
+        : AppColors.warning;
+  }
+
+  /// Get error color based on theme mode
+  static Color error(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? AppColors.error
+        : AppColors.error;
+  }
+
+  /// Get light button background color - very light in light mode, dark in dark mode
+  static Color buttonLightBackground(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? AppColors.darkBackgroundTertiary
+        : AppColors.white95;
+  }
+
+  /// Get light primary button color - lighter variant
+  static Color buttonLightPrimary(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? AppColors.primaryDark
+        : AppColors.primaryLight;
+  }
+
+  /// Get light success button color - lighter variant
+  static Color buttonLightSuccess(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? AppColors.successDark
+        : AppColors.successLight;
+  }
+
+  /// Get light warning button color - lighter variant
+  static Color buttonLightWarning(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? AppColors.warningDark
+        : AppColors.warningLight;
+  }
+
+  /// Get light bullish button color - lighter variant
+  static Color buttonLightBullish(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? AppColors.bullishDark
+        : AppColors.bullishLight;
+  }
+
+  /// Get light bearish button color - lighter variant
+  static Color buttonLightBearish(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? AppColors.bearishDark
+        : AppColors.bearishLight;
+  }
+
   // White tone color helpers - always use light theme colors
   /// Get white tone color based on intensity (0-100) - always light theme
   static Color whiteTone(BuildContext context, int intensity) {

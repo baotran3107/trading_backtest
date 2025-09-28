@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "352832278769",
+    "project_id": "trade-lab-2af58",
+    "storage_bucket": "trade-lab-2af58.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:352832278769:android:def0656421d6961e001950",
+        "android_client_info": {
+          "package_name": "com.example.trading_game"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "352832278769-0sf1f3e6mn7hl2aa937stpqorr2tbg26.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDh2nlBwknB04E0JxqpaZdoW6GEhIGwUWo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "352832278769-0sf1f3e6mn7hl2aa937stpqorr2tbg26.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

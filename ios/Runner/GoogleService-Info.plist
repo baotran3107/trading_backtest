@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>352832278769-m875d4u14b6leq78vcl7fh60blnofo77.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.352832278769-m875d4u14b6leq78vcl7fh60blnofo77</string>
+	<key>API_KEY</key>
+	<string>AIzaSyAKFx9precDVR8dTJnwoeoVD2C0SV86Zxs</string>
+	<key>GCM_SENDER_ID</key>
+	<string>352832278769</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.example.tradingGame</string>
+	<key>PROJECT_ID</key>
+	<string>trade-lab-2af58</string>
+	<key>STORAGE_BUCKET</key>
+	<string>trade-lab-2af58.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:352832278769:ios:bfb9fd97e899f7e5001950</string>
+</dict>
+</plist>

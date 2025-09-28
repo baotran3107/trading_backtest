@@ -5,6 +5,8 @@ import '../../model/candle_model.dart';
 import '../../model/closed_order_model.dart';
 import '../../repository/trading_data_repository.dart';
 import '../../utils/custom_notification.dart';
+import '../../theme/theme_colors.dart';
+import '../../theme/app_colors.dart';
 import 'widgets/trading_controls.dart';
 import 'widgets/backtesting_controls.dart';
 import 'widgets/price_display_panel.dart';
@@ -389,7 +391,8 @@ class _BackTestScreenState extends State<BackTestScreen> {
 
     // Show notification
     final pnlText = closedOrder.pnlText;
-    final color = closedOrder.isProfitable ? Colors.green : Colors.red;
+    final color =
+        closedOrder.isProfitable ? AppColors.success : AppColors.error;
     final icon =
         closedOrder.isProfitable ? Icons.trending_up : Icons.trending_down;
 
@@ -397,7 +400,7 @@ class _BackTestScreenState extends State<BackTestScreen> {
       message:
           'Order closed: $closeReason @ ${exitPrice.toStringAsFixed(3)} · $pnlText',
       backgroundColor: color,
-      textColor: Colors.white,
+      textColor: ThemeColors.textPrimary(context),
       icon: icon,
       duration: const Duration(seconds: 3),
     );
@@ -475,7 +478,7 @@ class _BackTestScreenState extends State<BackTestScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: _buildAppBar(),
-      backgroundColor: Colors.grey[900],
+      backgroundColor: ThemeColors.chartBackground(context),
       body: LayoutBuilder(
         builder: (context, constraints) {
           return _buildResponsiveLayout(constraints);
@@ -489,8 +492,8 @@ class _BackTestScreenState extends State<BackTestScreen> {
       title: Text(_metadata != null
           ? '${_metadata!['symbol']} - ${_metadata!['description']}'
           : 'XAUUSD Chart'),
-      backgroundColor: Colors.grey[900],
-      foregroundColor: Colors.white,
+      backgroundColor: ThemeColors.chartBackground(context),
+      foregroundColor: ThemeColors.chartText(context),
       elevation: 0,
       actions: [
         IconButton(
@@ -632,7 +635,7 @@ class _BackTestScreenState extends State<BackTestScreen> {
                     flex: 1,
                     child: Container(
                       decoration: BoxDecoration(
-                        color: Colors.grey[800],
+                        color: ThemeColors.surfaceContainer(context),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: ClosedOrdersPanel(
@@ -697,12 +700,12 @@ class _BackTestScreenState extends State<BackTestScreen> {
 
         return Container(
           decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey[700]!),
+            border: Border.all(color: ThemeColors.chartGrid(context)),
             borderRadius: BorderRadius.circular(12),
-            color: Colors.grey[900],
+            color: ThemeColors.chartBackground(context),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.3),
+                color: ThemeColors.shadow(context),
                 blurRadius: 6,
                 offset: const Offset(0, 3),
               ),
@@ -716,19 +719,19 @@ class _BackTestScreenState extends State<BackTestScreen> {
               height: double.infinity,
               candleWidth: 6,
               candleSpacing: 1,
-              bullishColor: Colors.greenAccent,
-              bearishColor: Colors.redAccent,
-              backgroundColor: Colors.grey[900]!,
-              gridColor: Colors.grey[700]!,
-              textColor: Colors.white,
-              wickColor: Colors.grey[400]!,
+              bullishColor: AppColors.bullish,
+              bearishColor: AppColors.bearish,
+              backgroundColor: ThemeColors.chartBackground(context),
+              gridColor: ThemeColors.chartGrid(context),
+              textColor: ThemeColors.chartText(context),
+              wickColor: AppColors.wick,
               showVolume: false,
               showGrid: true,
               showPriceLabels: true,
               showTimeLabels: true,
               enableInteraction: true,
-              labelTextStyle:
-                  const TextStyle(color: Colors.white, fontSize: 10),
+              labelTextStyle: TextStyle(
+                  color: ThemeColors.chartText(context), fontSize: 10),
               onLoadPastData: _onLoadPastData,
               onLoadFutureData: _onLoadFutureData,
               // Use provider-driven rendering to keep interactions working

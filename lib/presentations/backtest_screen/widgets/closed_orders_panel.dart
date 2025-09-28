@@ -3,6 +3,7 @@ import '../../../model/closed_order_model.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_text_styles.dart';
 import '../../../theme/app_spacing.dart';
+import '../../../theme/theme_colors.dart';
 
 class ClosedOrdersPanel extends StatelessWidget {
   final List<ClosedOrder> closedOrders;
@@ -53,9 +54,9 @@ class ClosedOrdersPanel extends StatelessWidget {
               if (onClear != null)
                 TextButton(
                   onPressed: onClear,
-                  child: const Text(
+                  child: Text(
                     'Clear',
-                    style: TextStyle(color: AppColors.error),
+                    style: TextStyle(color: ThemeColors.error(context)),
                   ),
                 ),
             ],
@@ -66,7 +67,7 @@ class ClosedOrdersPanel extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(AppSpacing.lg),
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: ThemeColors.surface(context),
               borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
             ),
             child: Row(
@@ -101,7 +102,7 @@ class ClosedOrdersPanel extends StatelessWidget {
               itemBuilder: (context, index) {
                 final order = closedOrders[
                     closedOrders.length - 1 - index]; // Show newest first
-                return _buildOrderItem(order);
+                return _buildOrderItem(context, order);
               },
             ),
           ),
@@ -126,12 +127,12 @@ class ClosedOrdersPanel extends StatelessWidget {
     );
   }
 
-  Widget _buildOrderItem(ClosedOrder order) {
+  Widget _buildOrderItem(BuildContext context, ClosedOrder order) {
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        color: AppColors.backgroundTertiary,
+        color: ThemeColors.backgroundTertiary(context),
         borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
         border: Border.all(
           color: order.color.withOpacity(0.3),

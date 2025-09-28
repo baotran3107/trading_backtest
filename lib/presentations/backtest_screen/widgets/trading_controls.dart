@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../../theme/app_colors.dart';
 import '../../../theme/app_text_styles.dart';
 import '../../../theme/app_spacing.dart';
+import '../../../theme/theme_colors.dart';
 
 class TradingControls extends StatelessWidget {
   final double currentPrice;
@@ -35,10 +35,11 @@ class TradingControls extends StatelessWidget {
             width: 84,
             height: AppSpacing.buttonHeightLarge,
             child: _buildTradeButton(
+              context,
               label: 'SELL',
               price: sellPrice,
-              color: AppColors.bearish,
-              textColor: AppColors.bearishLight,
+              color: ThemeColors.buttonLightBearish(context),
+              textColor: ThemeColors.textPrimary(context),
               onTap: onSell,
             ),
           ),
@@ -51,10 +52,11 @@ class TradingControls extends StatelessWidget {
             width: 84,
             height: AppSpacing.buttonHeightLarge,
             child: _buildTradeButton(
+              context,
               label: 'BUY',
               price: buyPrice,
-              color: AppColors.bullish,
-              textColor: AppColors.bullishLight,
+              color: ThemeColors.buttonLightBullish(context),
+              textColor: ThemeColors.textPrimary(context),
               onTap: onBuy,
             ),
           ),
@@ -63,14 +65,14 @@ class TradingControls extends StatelessWidget {
     );
   }
 
-  Widget _buildTradeButton({
+  Widget _buildTradeButton(
+    BuildContext context, {
     required String label,
     required double price,
     required Color color,
     required Color textColor,
     required VoidCallback onTap,
   }) {
-    final Color darker = AppColors.lerp(color, Colors.black, 0.25);
     final bool isBuy = label.toUpperCase() == 'BUY';
 
     return Material(
@@ -80,15 +82,15 @@ class TradingControls extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppSpacing.radiusLarge),
         child: Container(
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [darker, color],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+            color: Colors.white,
+            border: Border.all(
+              color: ThemeColors.border(context),
+              width: 1,
             ),
             borderRadius: BorderRadius.circular(AppSpacing.radiusLarge),
             boxShadow: [
               BoxShadow(
-                color: AppColors.shadow,
+                color: ThemeColors.shadow(context),
                 blurRadius: 4,
                 offset: const Offset(0, 2),
               ),
@@ -102,7 +104,7 @@ class TradingControls extends StatelessWidget {
                 isBuy
                     ? Icons.arrow_upward_rounded
                     : Icons.arrow_downward_rounded,
-                color: AppColors.textPrimary,
+                color: color,
                 size: AppSpacing.iconSmall,
               ),
               const SizedBox(width: AppSpacing.sm),
@@ -110,7 +112,7 @@ class TradingControls extends StatelessWidget {
                 child: Text(
                   label,
                   style: AppTextStyles.buttonSmall.copyWith(
-                    color: textColor,
+                    color: color,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -156,12 +158,12 @@ class TradingControls extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.backgroundCard,
+        color: ThemeColors.backgroundCard(context),
         borderRadius: BorderRadius.circular(AppSpacing.radiusLarge),
-        border: Border.all(color: AppColors.border, width: 1),
+        border: Border.all(color: ThemeColors.border(context), width: 1),
         boxShadow: [
           BoxShadow(
-            color: AppColors.shadowDark,
+            color: ThemeColors.shadowDark(context),
             blurRadius: 6,
             offset: const Offset(0, 3),
           ),
@@ -169,7 +171,8 @@ class TradingControls extends StatelessWidget {
       ),
       child: Row(
         children: [
-          _buildStepperButton(icon: Icons.remove, onPressed: decrement),
+          _buildStepperButton(context,
+              icon: Icons.remove, onPressed: decrement),
           Expanded(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -186,13 +189,14 @@ class TradingControls extends StatelessWidget {
               ],
             ),
           ),
-          _buildStepperButton(icon: Icons.add, onPressed: increment),
+          _buildStepperButton(context, icon: Icons.add, onPressed: increment),
         ],
       ),
     );
   }
 
-  Widget _buildStepperButton({
+  Widget _buildStepperButton(
+    BuildContext context, {
     required IconData icon,
     required VoidCallback onPressed,
   }) {
@@ -207,7 +211,7 @@ class TradingControls extends StatelessWidget {
           child: Center(
             child: Icon(
               icon,
-              color: AppColors.textPrimary,
+              color: ThemeColors.textPrimary(context),
               size: AppSpacing.iconMedium,
             ),
           ),

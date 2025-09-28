@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_text_styles.dart';
 import '../../../theme/app_spacing.dart';
+import '../../../theme/theme_colors.dart';
 
 class PriceDisplayPanel extends StatelessWidget {
   final double? currentPrice;
@@ -42,12 +43,12 @@ class PriceDisplayPanel extends StatelessWidget {
           horizontal: AppSpacing.screenMargin, vertical: AppSpacing.sm),
       padding: const EdgeInsets.all(AppSpacing.screenMargin),
       decoration: BoxDecoration(
-        color: AppColors.backgroundCard,
+        color: ThemeColors.backgroundCard(context),
         borderRadius: BorderRadius.circular(AppSpacing.radiusLarge),
-        border: Border.all(color: AppColors.border, width: 1),
+        border: Border.all(color: ThemeColors.border(context), width: 1),
         boxShadow: [
           BoxShadow(
-            color: AppColors.shadowDark,
+            color: ThemeColors.shadowDark(context),
             blurRadius: 6,
             offset: const Offset(0, 3),
           ),
@@ -85,12 +86,12 @@ class PriceDisplayPanel extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     if (isLoading)
-                      const SizedBox(
+                      SizedBox(
                         width: AppSpacing.iconMedium,
                         height: AppSpacing.iconMedium,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: AppColors.bullish,
+                          color: ThemeColors.success(context),
                         ),
                       )
                     else if (currentPrice != null) ...[
@@ -129,7 +130,7 @@ class PriceDisplayPanel extends StatelessWidget {
                       Text(
                         '--',
                         style: AppTextStyles.priceLarge.copyWith(
-                          color: AppColors.textTertiary,
+                          color: ThemeColors.textTertiary(context),
                         ),
                       ),
                   ],
@@ -145,9 +146,10 @@ class PriceDisplayPanel extends StatelessWidget {
               padding: const EdgeInsets.symmetric(
                   horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: ThemeColors.surface(context),
                 borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
-                border: Border.all(color: AppColors.borderLight, width: 0.5),
+                border: Border.all(
+                    color: ThemeColors.borderLight(context), width: 0.5),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,

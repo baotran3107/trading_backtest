@@ -240,7 +240,7 @@ class HomeScreen extends StatelessWidget {
     required VoidCallback onTap,
   }) {
     return Container(
-      height: 70,
+      height: AppSpacing.buttonHeightLarge,
       decoration: BoxDecoration(
         color: ThemeColors.backgroundCard(context),
         borderRadius: BorderRadius.circular(AppSpacing.radiusLarge),
@@ -277,7 +277,7 @@ class HomeScreen extends StatelessWidget {
                   icon,
                   style: const TextStyle(fontSize: 24),
                 ),
-                const SizedBox(width: AppSpacing.sm),
+                const SizedBox(width: AppSpacing.xl),
                 Text(
                   title,
                   style: AppTextStyles.titleMedium.copyWith(

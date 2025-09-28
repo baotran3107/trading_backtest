@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../theme/theme_colors.dart';
 
 class LoadingStateWidget extends StatelessWidget {
   final String message;
@@ -14,15 +15,15 @@ class LoadingStateWidget extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const CircularProgressIndicator(
-            color: Colors.greenAccent,
+          CircularProgressIndicator(
+            color: ThemeColors.success(context),
             strokeWidth: 3,
           ),
           const SizedBox(height: 24),
           Text(
             message,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: ThemeColors.textPrimary(context),
               fontSize: 16,
               fontWeight: FontWeight.w500,
             ),
@@ -51,16 +52,16 @@ class ErrorStateWidget extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
+            Icon(
               Icons.error_outline,
-              color: Colors.redAccent,
+              color: ThemeColors.error(context),
               size: 64,
             ),
             const SizedBox(height: 24),
             Text(
               'Oops! Something went wrong',
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: ThemeColors.textPrimary(context),
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
@@ -69,7 +70,7 @@ class ErrorStateWidget extends StatelessWidget {
             Text(
               errorMessage,
               style: TextStyle(
-                color: Colors.grey[400],
+                color: ThemeColors.textSecondary(context),
                 fontSize: 14,
               ),
               textAlign: TextAlign.center,
@@ -81,8 +82,8 @@ class ErrorStateWidget extends StatelessWidget {
                 icon: const Icon(Icons.refresh),
                 label: const Text('Try Again'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.greenAccent,
-                  foregroundColor: Colors.black,
+                  backgroundColor: ThemeColors.success(context),
+                  foregroundColor: ThemeColors.textPrimary(context),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 24,
                     vertical: 12,
@@ -118,14 +119,14 @@ class EmptyStateWidget extends StatelessWidget {
         children: [
           Icon(
             icon,
-            color: Colors.grey[600],
+            color: ThemeColors.textTertiary(context),
             size: 64,
           ),
           const SizedBox(height: 16),
           Text(
             message,
             style: TextStyle(
-              color: Colors.grey[400],
+              color: ThemeColors.textSecondary(context),
               fontSize: 16,
             ),
           ),
