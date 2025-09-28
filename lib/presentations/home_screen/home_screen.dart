@@ -4,6 +4,7 @@ import '../../theme/theme_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/app_spacing.dart';
 import '../backtest_screen/backtest_screen.dart';
+import '../../core/extensions/navigation_extension.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -205,12 +206,7 @@ class HomeScreen extends StatelessWidget {
             icon: '🔄',
             color: AppColors.primary,
             onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const BackTestScreen(),
-                ),
-              );
+              context.push(const BackTestScreen());
             },
           ),
         ),

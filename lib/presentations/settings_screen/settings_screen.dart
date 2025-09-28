@@ -7,6 +7,7 @@ import '../../theme/app_spacing.dart';
 import '../../theme/theme_provider.dart';
 import '../auth/bloc/auth_bloc.dart';
 import '../auth/auth_screen.dart';
+import '../../core/extensions/navigation_extension.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -344,7 +345,7 @@ class SettingsScreen extends StatelessWidget {
               onChanged: (value) {
                 if (value != null) {
                   themeProvider.setThemeMode(value);
-                  Navigator.of(context).pop();
+                  context.pop();
                 }
               },
             ),
@@ -356,7 +357,7 @@ class SettingsScreen extends StatelessWidget {
               onChanged: (value) {
                 if (value != null) {
                   themeProvider.setThemeMode(value);
-                  Navigator.of(context).pop();
+                  context.pop();
                 }
               },
             ),
@@ -368,7 +369,7 @@ class SettingsScreen extends StatelessWidget {
               onChanged: (value) {
                 if (value != null) {
                   themeProvider.setThemeMode(value);
-                  Navigator.of(context).pop();
+                  context.pop();
                 }
               },
             ),
@@ -376,7 +377,7 @@ class SettingsScreen extends StatelessWidget {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => context.pop(),
             child: const Text('Cancel'),
           ),
         ],
@@ -388,10 +389,7 @@ class SettingsScreen extends StatelessWidget {
     return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) {
         if (state is AuthUnauthenticated) {
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (context) => const AuthScreen()),
-            (route) => false,
-          );
+          context.pushAndRemoveAll(const AuthScreen());
         }
       },
       child: Builder(
@@ -445,12 +443,12 @@ class SettingsScreen extends StatelessWidget {
         content: const Text('Are you sure you want to logout?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => context.pop(),
             child: const Text('Cancel'),
           ),
           TextButton(
             onPressed: () {
-              Navigator.of(context).pop();
+              context.pop();
               context.read<AuthBloc>().add(AuthSignOutRequested());
             },
             child: const Text(

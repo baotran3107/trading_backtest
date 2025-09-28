@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/extensions/navigation_extension.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
@@ -60,9 +61,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
     return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) {
         if (state is AuthAuthenticated) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (context) => const MainNavigation()),
-          );
+          context.pushReplacement(const MainNavigation());
         } else if (state is AuthError) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(

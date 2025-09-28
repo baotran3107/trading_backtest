@@ -4,6 +4,7 @@ import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/app_spacing.dart';
 import '../auth/auth_screen.dart';
+import '../../core/extensions/navigation_extension.dart';
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
@@ -69,9 +70,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     await prefs.setBool('welcome_completed', true);
 
     if (mounted) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const AuthScreen()),
-      );
+      context.pushReplacement(const AuthScreen());
     }
   }
 

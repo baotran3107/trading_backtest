@@ -13,6 +13,7 @@ import 'widgets/price_display_panel.dart';
 import 'widgets/state_widgets.dart';
 import 'widgets/closed_orders_panel.dart';
 import 'bloc/backtest_bloc.dart';
+import '../../core/extensions/navigation_extension.dart';
 
 /// Demo page showing how to use the StockChart widget with XAUUSD data
 class BackTestScreen extends StatefulWidget {
@@ -443,7 +444,7 @@ class _BackTestScreenState extends State<BackTestScreen> {
           content: const Text('Indicator selection coming soon...'),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => context.pop(),
               child: const Text('Close'),
             ),
           ],
@@ -463,7 +464,7 @@ class _BackTestScreenState extends State<BackTestScreen> {
           content: const Text('Timeframe selection coming soon...'),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => context.pop(),
               child: const Text('Close'),
             ),
           ],
