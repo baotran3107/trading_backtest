@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../model/user_model.dart';
+import '../constants/auth_constants.dart';
 
 class UserService {
   static final UserService _instance = UserService._internal();
@@ -7,7 +8,7 @@ class UserService {
   UserService._internal();
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  static const String _usersCollection = 'users';
+  static const String _usersCollection = FirestoreCollections.users;
 
   /// Check if a user exists in Firestore
   Future<bool> userExists(String uid) async {

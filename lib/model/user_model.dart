@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart' show Timestamp;
 
 class UserModel {
   final String uid;
@@ -49,17 +50,25 @@ class UserModel {
   }
 
   factory UserModel.fromMap(Map<String, dynamic> map) {
+    DateTime? _parseDate(dynamic value) {
+      if (value == null) return null;
+      if (value is Timestamp) return value.toDate();
+      if (value is int) return DateTime.fromMillisecondsSinceEpoch(value);
+      if (value is String) {
+        // Attempt to parse ISO8601 strings if present
+        final parsed = DateTime.tryParse(value);
+        if (parsed != null) return parsed;
+      }
+      return null;
+    }
+
     return UserModel(
       uid: map['uid'] ?? '',
       email: map['email'] ?? '',
       displayName: map['displayName'] ?? 'User',
       photoURL: map['photoURL'],
-      createdAt: map['createdAt'] != null
-          ? DateTime.fromMillisecondsSinceEpoch(map['createdAt'])
-          : null,
-      lastLoginAt: map['lastLoginAt'] != null
-          ? DateTime.fromMillisecondsSinceEpoch(map['lastLoginAt'])
-          : null,
+      createdAt: _parseDate(map['createdAt']),
+      lastLoginAt: _parseDate(map['lastLoginAt']),
       provider: map['provider'],
       preferences: map['preferences'] != null
           ? Map<String, dynamic>.from(map['preferences'])
