@@ -8,212 +8,242 @@ import '../../theme/theme_provider.dart';
 import '../auth/bloc/auth_bloc.dart';
 import '../auth/auth_screen.dart';
 import '../../core/extensions/navigation_extension.dart';
+import '../../di/di.dart';
+import '../user_data/bloc/user_data_bloc.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<ThemeProvider>(
-      builder: (context, themeProvider, child) {
-        final isDarkMode = themeProvider.isDarkMode;
-        final backgroundColor = isDarkMode
-            ? AppColors.darkBackgroundSecondary
-            : AppColors.backgroundSecondary;
-        final appBarColor =
-            isDarkMode ? AppColors.darkBackground : AppColors.background;
+    return BlocProvider<UserDataBloc>(
+      create: (_) => getIt<UserDataBloc>()..add(UserDataStarted()),
+      child: Consumer<ThemeProvider>(
+        builder: (context, themeProvider, child) {
+          final isDarkMode = themeProvider.isDarkMode;
+          final backgroundColor = isDarkMode
+              ? AppColors.darkBackgroundSecondary
+              : AppColors.backgroundSecondary;
+          final appBarColor =
+              isDarkMode ? AppColors.darkBackground : AppColors.background;
 
-        return Scaffold(
-          backgroundColor: backgroundColor,
-          appBar: AppBar(
-            backgroundColor: appBarColor,
-            title: const Text('Settings'),
-            elevation: 0,
-          ),
-          body: SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(AppSpacing.screenMargin),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // User Profile Section
-                  _buildUserProfileSection(),
-                  const SizedBox(height: AppSpacing.xxxlg),
+          return Scaffold(
+            backgroundColor: backgroundColor,
+            appBar: AppBar(
+              backgroundColor: appBarColor,
+              title: const Text('Settings'),
+              elevation: 0,
+            ),
+            body: SafeArea(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(AppSpacing.screenMargin),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // User Profile Section
+                    _buildUserProfileSection(),
+                    const SizedBox(height: AppSpacing.xxxlg),
 
-                  // Account Settings
-                  _buildSettingsSection(
-                    title: 'Account',
-                    items: [
-                      _buildSettingsItem(
-                        icon: Icons.person,
-                        title: 'Profile',
-                        subtitle: 'Manage your personal information',
-                        onTap: () {},
-                      ),
-                      _buildSettingsItem(
-                        icon: Icons.security,
-                        title: 'Security',
-                        subtitle: 'Password and authentication',
-                        onTap: () {},
-                      ),
-                      _buildSettingsItem(
-                        icon: Icons.notifications,
-                        title: 'Notifications',
-                        subtitle: 'Manage notification preferences',
-                        onTap: () {},
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.xxxlg),
+                    // Account Settings
+                    _buildSettingsSection(
+                      title: 'Account',
+                      items: [
+                        _buildSettingsItem(
+                          icon: Icons.person,
+                          title: 'Profile',
+                          subtitle: 'Manage your personal information',
+                          onTap: () {},
+                        ),
+                        _buildSettingsItem(
+                          icon: Icons.security,
+                          title: 'Security',
+                          subtitle: 'Password and authentication',
+                          onTap: () {},
+                        ),
+                        _buildSettingsItem(
+                          icon: Icons.notifications,
+                          title: 'Notifications',
+                          subtitle: 'Manage notification preferences',
+                          onTap: () {},
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.xxxlg),
 
-                  // Trading Settings
-                  _buildSettingsSection(
-                    title: 'Trading',
-                    items: [
-                      _buildSettingsItem(
-                        icon: Icons.trending_up,
-                        title: 'Trading Preferences',
-                        subtitle: 'Default settings for trading',
-                        onTap: () {},
-                      ),
-                      _buildSettingsItem(
-                        icon: Icons.analytics,
-                        title: 'Risk Management',
-                        subtitle: 'Configure risk parameters',
-                        onTap: () {},
-                      ),
-                      _buildSettingsItem(
-                        icon: Icons.data_usage,
-                        title: 'Data Sources',
-                        subtitle: 'Manage data connections',
-                        onTap: () {},
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.xxxlg),
+                    // Trading Settings
+                    _buildSettingsSection(
+                      title: 'Trading',
+                      items: [
+                        _buildSettingsItem(
+                          icon: Icons.trending_up,
+                          title: 'Trading Preferences',
+                          subtitle: 'Default settings for trading',
+                          onTap: () {},
+                        ),
+                        _buildSettingsItem(
+                          icon: Icons.analytics,
+                          title: 'Risk Management',
+                          subtitle: 'Configure risk parameters',
+                          onTap: () {},
+                        ),
+                        _buildSettingsItem(
+                          icon: Icons.data_usage,
+                          title: 'Data Sources',
+                          subtitle: 'Manage data connections',
+                          onTap: () {},
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.xxxlg),
 
-                  // App Settings
-                  _buildSettingsSection(
-                    title: 'App',
-                    items: [
-                      _buildThemeSettingsItem(),
-                      _buildSettingsItem(
-                        icon: Icons.language,
-                        title: 'Language',
-                        subtitle: 'English',
-                        onTap: () {},
-                      ),
-                      _buildSettingsItem(
-                        icon: Icons.help,
-                        title: 'Help & Support',
-                        subtitle: 'Get help and contact support',
-                        onTap: () {},
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.xxxlg),
+                    // App Settings
+                    _buildSettingsSection(
+                      title: 'App',
+                      items: [
+                        _buildThemeSettingsItem(),
+                        _buildSettingsItem(
+                          icon: Icons.language,
+                          title: 'Language',
+                          subtitle: 'English',
+                          onTap: () {},
+                        ),
+                        _buildSettingsItem(
+                          icon: Icons.help,
+                          title: 'Help & Support',
+                          subtitle: 'Get help and contact support',
+                          onTap: () {},
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.xxxlg),
 
-                  // Logout Button
-                  _buildLogoutButton(),
-                ],
+                    // Logout Button
+                    _buildLogoutButton(),
+                  ],
+                ),
               ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 
   Widget _buildUserProfileSection() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(AppSpacing.xxxlg),
-      decoration: BoxDecoration(
-        color: AppColors.backgroundCard,
-        borderRadius: BorderRadius.circular(AppSpacing.radiusLarge),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.shadowLight,
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-        border: Border.all(
-          color: AppColors.borderLight,
-          width: 1,
-        ),
-      ),
-      child: Row(
-        children: [
-          // Avatar
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              color: AppColors.primary,
-              borderRadius: BorderRadius.circular(AppSpacing.radiusRound),
-            ),
-            child: const Center(
-              child: Text(
-                'JD',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 20,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: AppSpacing.lg),
+    return BlocBuilder<UserDataBloc, UserDataState>(
+      builder: (context, state) {
+        String displayName = 'User';
+        String email = '';
+        String initials = 'U';
 
-          // User Info
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'John Doe',
-                  style: AppTextStyles.titleLarge,
+        if (state is UserDataLoaded) {
+          displayName = state.user.displayName.isNotEmpty
+              ? state.user.displayName
+              : 'User';
+          email = state.user.email;
+          final parts = displayName.trim().split(' ');
+          if (parts.isNotEmpty) {
+            final first = parts.first.isNotEmpty ? parts.first[0] : '';
+            final last =
+                parts.length > 1 && parts.last.isNotEmpty ? parts.last[0] : '';
+            final candidate = (first + last).toUpperCase();
+            initials = candidate.isNotEmpty ? candidate : initials;
+          }
+        }
+
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(AppSpacing.xxxlg),
+          decoration: BoxDecoration(
+            color: AppColors.backgroundCard,
+            borderRadius: BorderRadius.circular(AppSpacing.radiusLarge),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.shadowLight,
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+            border: Border.all(
+              color: AppColors.borderLight,
+              width: 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              // Avatar
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusRound),
                 ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  'john.doe@example.com',
-                  style: AppTextStyles.bodyMedium.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.sm,
-                    vertical: AppSpacing.xs,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.success.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(AppSpacing.radiusSmall),
-                  ),
+                child: Center(
                   child: Text(
-                    'Premium Member',
-                    style: AppTextStyles.caption.copyWith(
-                      color: AppColors.success,
-                      fontWeight: FontWeight.w600,
+                    initials,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
                     ),
                   ),
                 ),
-              ],
-            ),
-          ),
+              ),
+              const SizedBox(width: AppSpacing.lg),
 
-          // Edit Button
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(
-              Icons.edit,
-              color: AppColors.primary,
-            ),
+              // User Info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      displayName,
+                      style: AppTextStyles.titleLarge,
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    if (email.isNotEmpty)
+                      Text(
+                        email,
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    const SizedBox(height: AppSpacing.sm),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.sm,
+                        vertical: AppSpacing.xs,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.success.withOpacity(0.1),
+                        borderRadius:
+                            BorderRadius.circular(AppSpacing.radiusSmall),
+                      ),
+                      child: Text(
+                        'Premium Member',
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.success,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Edit Button
+              IconButton(
+                onPressed: () {},
+                icon: const Icon(
+                  Icons.edit,
+                  color: AppColors.primary,
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 

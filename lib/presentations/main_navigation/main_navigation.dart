@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 import '../home_screen/home_screen.dart';
 import '../performance_screen/performance_screen.dart';
-import '../education_screen/education_screen.dart';
+import '../manage_data/manage_data_screen.dart';
 import '../settings_screen/settings_screen.dart';
 
 class MainNavigation extends StatefulWidget {
@@ -21,7 +21,7 @@ class _MainNavigationState extends State<MainNavigation>
   final List<Widget> _screens = [
     const HomeScreen(),
     const PerformanceScreen(),
-    const EducationScreen(),
+    const ManageDataScreen(),
     const SettingsScreen(),
   ];
 
@@ -39,9 +39,9 @@ class _MainNavigationState extends State<MainNavigation>
       color: Colors.green,
     ),
     NavigationItem(
-      icon: Icons.school_outlined,
-      activeIcon: Icons.school,
-      label: 'Education',
+      icon: Icons.data_usage_outlined,
+      activeIcon: Icons.data_usage,
+      label: 'Manage Data',
       color: Colors.orange,
     ),
     NavigationItem(
