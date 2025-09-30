@@ -1,7 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:injectable/injectable.dart';
 import '../model/user_model.dart';
 import '../constants/auth_constants.dart';
 
+@lazySingleton
 class UserService {
   static final UserService _instance = UserService._internal();
   factory UserService() => _instance;

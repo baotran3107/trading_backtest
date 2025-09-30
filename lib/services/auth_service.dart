@@ -1,9 +1,11 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:injectable/injectable.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../model/user_model.dart';
 import 'user_service.dart';
 
+@lazySingleton
 class AuthService {
   static final AuthService _instance = AuthService._internal();
   factory AuthService() => _instance;
