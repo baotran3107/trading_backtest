@@ -31,7 +31,7 @@ class AppTheme {
       textButtonTheme: _buildTextButtonTheme(),
       outlinedButtonTheme: _buildOutlinedButtonTheme(),
       inputDecorationTheme: _buildInputDecorationTheme(),
-      cardTheme: _buildCardTheme(),
+      cardTheme: _buildCardThemeData(),
       dividerTheme: _buildDividerTheme(),
       scaffoldBackgroundColor: AppColors.background,
     );
@@ -60,7 +60,7 @@ class AppTheme {
       textButtonTheme: _buildDarkTextButtonTheme(),
       outlinedButtonTheme: _buildDarkOutlinedButtonTheme(),
       inputDecorationTheme: _buildDarkInputDecorationTheme(),
-      cardTheme: _buildDarkCardTheme(),
+      cardTheme: _buildDarkCardThemeData(),
       dividerTheme: _buildDarkDividerTheme(),
       scaffoldBackgroundColor: AppColors.darkBackground,
     );
@@ -195,8 +195,8 @@ class AppTheme {
   }
 
   /// Build card theme
-  static CardTheme _buildCardTheme() {
-    return CardTheme(
+  static CardThemeData _buildCardThemeData() {
+    return CardThemeData(
       color: AppColors.backgroundCard,
       elevation: 2,
       shadowColor: AppColors.shadow,
@@ -340,8 +340,8 @@ class AppTheme {
     );
   }
 
-  static CardTheme _buildDarkCardTheme() {
-    return CardTheme(
+  static CardThemeData _buildDarkCardThemeData() {
+    return CardThemeData(
       color: AppColors.darkBackgroundCard,
       elevation: 2,
       shadowColor: AppColors.darkShadow,
