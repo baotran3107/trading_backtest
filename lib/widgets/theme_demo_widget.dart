@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../theme/theme_colors.dart';
-import '../theme/app_colors.dart';
+
 import '../theme/app_spacing.dart';
+import '../theme/theme_colors.dart';
 
 /// Demo widget showcasing theme-aware colors and white tone colors
 class ThemeDemoWidget extends StatelessWidget {

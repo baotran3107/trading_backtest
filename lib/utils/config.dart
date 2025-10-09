@@ -1,4 +1,12 @@
-class AppConfig {}
+class AppConfig {
+  // Supabase base URL (no trailing slash)
+  static const String supabaseBaseUrl =
+      'https://szrqyibqqcasnogoworh.supabase.co';
+
+  // Supabase signed URL token for public object access
+  static const String supabaseSignedToken =
+      'eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV83NDcyNjVmMi1kMThkLTQ2OGYtYTE4YS02NWZmNWI0NDEzMDIiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJoaXN0b3J5LXByaWNpbmcveGF1dXNkL1hBVVVTRF9NMS5qc29uIiwiaWF0IjoxNzU5OTk2OTUxLCJleHAiOjE3OTE1MzI5NTF9.P50vz15EYZr8LNaSaT2_Ph9bj-MBuX06EUsWGhKGHY8';
+}
 
 enum AppConfigKey {
   xauusdM1,

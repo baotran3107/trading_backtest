@@ -13,6 +13,8 @@ import 'package:get_it/get_it.dart' as _i174;
 import 'package:injectable/injectable.dart' as _i526;
 import 'package:trade_lab/presentations/user_data/bloc/user_data_bloc.dart'
     as _i965;
+import 'package:trade_lab/repository/xauusd_repository.dart' as _i1035;
+import 'package:trade_lab/repository/xauusd_repository_impl.dart' as _i83;
 import 'package:trade_lab/services/api/api_client.dart' as _i342;
 import 'package:trade_lab/services/api/api_module.dart' as _i571;
 import 'package:trade_lab/services/auth_service.dart' as _i138;
@@ -37,6 +39,8 @@ extension GetItInjectableX on _i174.GetIt {
           gh<_i138.AuthService>(),
           gh<_i446.UserService>(),
         ));
+    gh.lazySingleton<_i1035.XauusdRepository>(
+        () => _i83.XauusdRepositoryImpl(gh<_i342.ApiClient>()));
     return this;
   }
 }

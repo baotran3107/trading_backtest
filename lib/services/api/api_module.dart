@@ -1,6 +1,6 @@
 import 'package:injectable/injectable.dart';
 
-import '../../constants/api_constants.dart';
+import '../../utils/config.dart';
 import 'api_client.dart';
 import 'dio_api_client.dart';
 
@@ -8,6 +8,6 @@ import 'dio_api_client.dart';
 abstract class ApiModule {
   @lazySingleton
   ApiClient apiClient() => DioApiClient(
-        baseUrl: ApiConstants.defaultBaseUrl,
+        baseUrl: AppConfig.supabaseBaseUrl,
       );
 }

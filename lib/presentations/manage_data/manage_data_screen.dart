@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'bloc/manage_data_bloc.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/app_spacing.dart';
@@ -38,6 +41,11 @@ class _ManageDataScreenState extends State<ManageDataScreen> {
   final Set<String> _downloaded = <String>{};
 
   @override
+  void initState() {
+    super.initState();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.backgroundSecondary,
@@ -46,13 +54,34 @@ class _ManageDataScreenState extends State<ManageDataScreen> {
         title: const Text('Manage Data'),
         elevation: 0,
       ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(),
-            const SizedBox(height: AppSpacing.md),
-            Expanded(child: _buildInstrumentList()),
-          ],
+      body: BlocProvider(
+        create: (context) => ManageDataBloc(box: Hive.box('datasets'))
+          ..add(ManageDataInitRequested()),
+        child: SafeArea(
+          child: BlocConsumer<ManageDataBloc, ManageDataState>(
+            listener: (context, state) {
+              setState(() {
+                _downloadingSymbol = state.inProgressSymbol;
+                _downloaded
+                  ..clear()
+                  ..addAll(state.downloadedSymbols);
+              });
+              if (state.errorMessage != null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(state.errorMessage!)),
+                );
+              }
+            },
+            builder: (context, state) {
+              return Column(
+                children: [
+                  _buildHeader(),
+                  const SizedBox(height: AppSpacing.md),
+                  Expanded(child: _buildInstrumentList(context)),
+                ],
+              );
+            },
+          ),
         ),
       ),
     );
@@ -76,7 +105,7 @@ class _ManageDataScreenState extends State<ManageDataScreen> {
     );
   }
 
-  Widget _buildInstrumentList() {
+  Widget _buildInstrumentList(BuildContext context) {
     return ListView.separated(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenMargin),
       itemCount: _instruments.length,
@@ -89,7 +118,13 @@ class _ManageDataScreenState extends State<ManageDataScreen> {
           color: Colors.transparent,
           child: InkWell(
             borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
-            onTap: isDownloaded ? null : () {},
+            onTap: isDownloaded
+                ? null
+                : () {
+                    context
+                        .read<ManageDataBloc>()
+                        .add(ManageDataDownloadRequested(instrument.symbol));
+                  },
             child: Container(
               decoration: BoxDecoration(
                 color: AppColors.backgroundCard,
@@ -110,7 +145,7 @@ class _ManageDataScreenState extends State<ManageDataScreen> {
               child: Row(
                 children: [
                   CircleAvatar(
-                    backgroundColor: instrument.color.withOpacity(0.15),
+                    backgroundColor: instrument.color.withValues(alpha: 0.15),
                     child: Text(
                       instrument.symbol.substring(0, 1),
                       style: TextStyle(color: instrument.color),
@@ -172,20 +207,10 @@ class _ManageDataScreenState extends State<ManageDataScreen> {
     return IconButton(
       onPressed: isAnotherDownloading
           ? null
-          : () async {
-              setState(() => _downloadingSymbol = symbol);
-              await Future.delayed(const Duration(milliseconds: 800));
-              if (!mounted) return;
-              setState(() {
-                _downloadingSymbol = null;
-                _downloaded.add(symbol);
-              });
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Downloaded: $symbol'),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
+          : () {
+              context
+                  .read<ManageDataBloc>()
+                  .add(ManageDataDownloadRequested(symbol));
             },
       icon: const Icon(Icons.download),
       color: AppColors.primary,
