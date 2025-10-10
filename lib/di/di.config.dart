@@ -35,7 +35,7 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i138.AuthService>(() => _i138.AuthService());
     gh.lazySingleton<_i342.ApiClient>(() => apiModule.apiClient());
     gh.lazySingleton<_i446.UserService>(() => _i446.UserService());
-    gh.lazySingleton<_i965.UserDataBloc>(() => _i965.UserDataBloc(
+    gh.factory<_i965.UserDataBloc>(() => _i965.UserDataBloc(
           gh<_i138.AuthService>(),
           gh<_i446.UserService>(),
         ));

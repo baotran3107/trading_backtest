@@ -17,7 +17,7 @@ class _UserDataStreamUpdated extends UserDataEvent {
   const _UserDataStreamUpdated(this.user);
 }
 
-@lazySingleton
+@injectable
 class UserDataBloc extends Bloc<UserDataEvent, UserDataState> {
   final AuthService _authService;
   final UserService _userService;
